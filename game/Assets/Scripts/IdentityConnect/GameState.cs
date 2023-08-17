@@ -12,26 +12,26 @@ public struct ICPairingData
   public string accountAddress;
 }
 
+
 public static class GameState
 {
-  public static ICPairingData? icPairing
+
+  public static T? Get<T>(string key) where T : struct
   {
-    get
+    return PlayerPrefs.HasKey(key)
+     ? JsonConvert.DeserializeObject<T>(PlayerPrefs.GetString(key))
+     : null;
+  }
+
+  public static void Set<T>(string key, T? value) where T : struct
+  {
+    if (value != null)
     {
-      return PlayerPrefs.HasKey("icPairing")
-      ? JsonConvert.DeserializeObject<ICPairingData>(PlayerPrefs.GetString("icPairing"))
-      : null;
+      PlayerPrefs.SetString(key, JsonConvert.SerializeObject(value));
     }
-    set
+    else
     {
-      if (value != null)
-      {
-        PlayerPrefs.SetString("icPairing", JsonConvert.SerializeObject(value));
-      }
-      else
-      {
-        PlayerPrefs.DeleteKey("icPairing");
-      }
+      PlayerPrefs.DeleteKey(key);
     }
   }
 }

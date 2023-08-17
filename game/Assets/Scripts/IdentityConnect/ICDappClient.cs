@@ -3,9 +3,15 @@ using System.Threading.Tasks;
 
 public class ICDappClient
 {
+  private static ICPairingData? IcPairing
+  {
+    get => GameState.Get<ICPairingData>("icPairing");
+    set => GameState.Set<ICPairingData>("icPairing", value);
+  }
+
   public async Task connect()
   {
-    GameState.icPairing = new ICPairingData
+    IcPairing = new ICPairingData
     {
       pairingId = "pairingId",
       accountAddress = "0xb0b"
@@ -14,11 +20,11 @@ public class ICDappClient
 
   public async Task disconnect()
   {
-    GameState.icPairing = null;
+    IcPairing = null;
   }
 
   public bool isConnected
   {
-    get => GameState.icPairing != null;
+    get => IcPairing != null;
   }
 }
