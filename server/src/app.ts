@@ -190,7 +190,7 @@ const runServer = async () => {
     });
 
     // Logs out of the session and destroys the auth nonce
-    app.get("/logout", async (request: Request, response: Response) => {
+    app.post("/logout", async (request: Request, response: Response) => {
         let auth = authenticate(request, response);
         if (!auth.success) {
             return;
