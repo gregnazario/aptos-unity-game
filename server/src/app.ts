@@ -2,16 +2,24 @@
 import express, {Express, Request, Response} from "express";
 // @ts-ignore
 import dotenv from 'dotenv';
-import {HexString, Network, Provider} from "aptos";
+import {AptosAccount, HexString, Network, Provider} from "aptos";
 import {InMemoryDatabase} from "./database";
 import {cleanupAddress, serializeSigningMessage, signingMessage} from "./utils";
 import {toError} from "./types";
 
 dotenv.config();
-const PORT = process.env.PORT || 8080;
-const PRIVATE_KEY = process.env.PRIVATE_KEY || undefined;
-export const APTOS = new Provider(Network.DEVNET);
 
+const PORT = process.env.PORT || 8080;
+
+let serverPrivateKey: Uint8Array | undefined;
+if (process.env.PRIVATE_KEY) {
+    serverPrivateKey = HexString.ensure(process.env.PRIVATE_KEY).toUint8Array();
+} else {
+    serverPrivateKey = undefined;
+}
+
+export const APTOS = new Provider(Network.DEVNET);
+export let ACCOUNT = new AptosAccount(serverPrivateKey);
 
 const runServer = async () => {
     let db = new InMemoryDatabase();
@@ -85,7 +93,15 @@ const runServer = async () => {
         }
         try {
             let sessionInfo = db.get(accountAddress.toString());
-            response.send(sessionInfo);
+
+            // Remove the auth nonce
+            let ret = {
+                accountAddress: sessionInfo.accountAddress,
+                sessionId: sessionInfo.sessionId,
+                loggedIn: sessionInfo.loggedIn,
+                timestamp: sessionInfo.timestamp,
+            }
+            response.send(ret);
         } catch (e: any) {
             // TODO: Make 400s better codes
             response.status(400).send(toError(e));
@@ -102,7 +118,7 @@ const runServer = async () => {
         let authToken = query["authToken"];
 
         try {
-            let sessionInfo = db.getInner(accountAddress.toString());
+            let sessionInfo = db.get(accountAddress.toString());
             if (!sessionInfo.loggedIn) {
                 response.status(403).send(toError("User not logged in"));
             }
