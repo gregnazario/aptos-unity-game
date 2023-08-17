@@ -194,9 +194,10 @@ const runServer = async () => {
         }
         let address = cleanupAddress(accountAddress.toString());
 
+        let newSession = query["newSession"] === "true";
         try {
             // TODO: Handle current session being too long
-            let sessionInfo = db.create(address, false);
+            let sessionInfo = db.create(address, newSession);
             let serializedMessage = serializeSigningMessage(signingMessage(sessionInfo));
             response.send(HexString.fromUint8Array(serializedMessage).toString());
         } catch (e: any) {
