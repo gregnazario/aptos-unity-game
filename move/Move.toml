@@ -1,0 +1,28 @@
+[package]
+name = "space-fighters"
+version = "0.0.1"
+upgrade_policy = "compatible"
+
+[dependencies.AptosFramework]
+git = 'https://github.com/aptos-labs/aptos-core.git'
+rev = 'framework-mainnet'
+subdir = 'aptos-move/framework/aptos-framework'
+
+[dependencies.AptosTokenObjects]
+git = 'https://github.com/aptos-labs/aptos-core.git'
+rev = 'framework-mainnet'
+subdir = 'aptos-move/framework/aptos-token-objects'
+
+[dependencies.MoveStdlib]
+git = 'https://github.com/aptos-labs/aptos-core.git'
+rev = 'framework-mainnet'
+subdir = 'aptos-move/framework/move-stdlib'
+
+[dependencies.AptosToken]
+git = 'https://github.com/aptos-labs/aptos-core.git'
+rev = 'framework-mainnet'
+subdir = 'aptos-move/framework/aptos-token'
+
+[addresses]
+# compose = "_"
+space_fighters = "_"
