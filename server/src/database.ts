@@ -2,7 +2,7 @@
 import nacl from "tweetnacl";
 import {randomUUID} from "crypto";
 import {HexString, TxnBuilderTypes} from "aptos";
-import {SessionInfo, Signature, SigningMessage} from "./types";
+import {LoginRequest, SessionInfo, Signature, SigningMessage} from "./types";
 import {cleanupAddress, serializeSigningMessage, signingMessage} from "./utils";
 import {APTOS} from "./app";
 
@@ -47,8 +47,8 @@ export class InMemoryDatabase implements Database {
         return newSession;
     }
 
-    async login(signature: Signature): Promise<string> {
-        let address = cleanupAddress(signature.accountAddress);
+    async login(request: LoginRequest): Promise<string> {
+        let address = cleanupAddress(request.accountAddress);
         let currentSession: SessionInfo | undefined = this.db.get(address);
         if (currentSession) {
             // Login must have been within 5 minutes
@@ -61,17 +61,17 @@ export class InMemoryDatabase implements Database {
             let publicKeyBytes: Uint8Array;
             let ed25519PublicKey: TxnBuilderTypes.Ed25519PublicKey;
             try {
-                publicKeyBytes = HexString.ensure(signature.publicKey).toUint8Array();
+                publicKeyBytes = HexString.ensure(request.publicKey).toUint8Array();
                 ed25519PublicKey = new TxnBuilderTypes.Ed25519PublicKey(publicKeyBytes)
             } catch (error: any) {
-                throw new Error(`Invalid public key for session: '${signature.publicKey}'`)
+                throw new Error(`Invalid public key for session: '${request.publicKey}'`)
             }
 
             // Signature must be valid
             let message = signingMessage(currentSession);
             let serializedMessage = serializeSigningMessage(message);
 
-            if (nacl.sign.detached.verify(serializedMessage, HexString.ensure(signature.signature).toUint8Array(), publicKeyBytes)) {
+            if (nacl.sign.detached.verify(HexString.ensure(request.message).toUint8Array(), HexString.ensure(request.signature).toUint8Array(), publicKeyBytes)) {
                 throw new Error(`Invalid signature for session: '${address}'`)
             }
 

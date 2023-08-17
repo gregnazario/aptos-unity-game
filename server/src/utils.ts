@@ -35,3 +35,47 @@ export const cleanupAddress = (accountAddress: string): string => {
 
     return TxnBuilderTypes.AccountAddress.standardizeAddress(accountAddress);
 }
+
+export const entryFunctionPayload = (
+    moduleAddress: string,
+    moduleName: string,
+    functionName: string,
+    args: Uint8Array[],
+): TxnBuilderTypes.TransactionPayloadEntryFunction => {
+    return new TxnBuilderTypes.TransactionPayloadEntryFunction(
+        TxnBuilderTypes.EntryFunction.natural(
+            `${moduleAddress}::${moduleName}`,
+            functionName,
+            [],
+            args,
+        ));
+}
+
+// TODO: This should be part of the SDK
+export const serializeAddress = (input: string): Uint8Array => {
+    return BCS.bcsToBytes(TxnBuilderTypes.AccountAddress.fromHex(input));
+}
+export const serializeStr = (input: string): Uint8Array => {
+    return BCS.bcsSerializeStr(input);
+}
+
+// TODO: This is really not good for optional addresses
+export const serializeOptionalAddress = (input: string | undefined | null): Uint8Array => {
+    let vector = [];
+    // All falsy is fine, since it must be a full address
+    if (!input) {
+        return BCS.serializeVectorWithFunc([], "serializeFixedBytes");
+    } else {
+        let address = TxnBuilderTypes.AccountAddress.fromHex(input);
+        return BCS.serializeVectorWithFunc([address.address], "serializeFixedBytes");
+    }
+}
+
+// TODO: Why aren't these just U64
+export const serializeU64 = (input: number): Uint8Array => {
+    return BCS.bcsSerializeUint64(input);
+}
+
+export const randomIndex = (length: number): number => {
+    return (Math.floor(Math.random() * length));
+}

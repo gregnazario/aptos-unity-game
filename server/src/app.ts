@@ -5,7 +5,8 @@ import dotenv from 'dotenv';
 import {AptosAccount, HexString, Network, Provider} from "aptos";
 import {InMemoryDatabase} from "./database";
 import {cleanupAddress, serializeSigningMessage, signingMessage} from "./utils";
-import {toError} from "./types";
+import {CreateResponse, isMintInput, isSwapOrAddInput, toError, UserResponse} from "./types";
+import {GameClient, Minter} from "./gameClient";
 
 dotenv.config();
 
@@ -21,6 +22,8 @@ if (process.env.PRIVATE_KEY) {
 export const APTOS = new Provider(Network.DEVNET);
 export let ACCOUNT = new AptosAccount(serverPrivateKey);
 const db = new InMemoryDatabase();
+const minter = new Minter(APTOS, ACCOUNT);
+const gameClient = new GameClient(APTOS, ACCOUNT);
 
 const runServer = async () => {
 
@@ -57,9 +60,11 @@ const runServer = async () => {
             // TODO: Handle current session being too long
             let sessionInfo = db.create(address, newSession);
             let serializedMessage = serializeSigningMessage(signingMessage(sessionInfo));
-            response.send({
-                signingMessage: HexString.fromUint8Array(serializedMessage).toString()
-            });
+            let createResponse: CreateResponse = {
+                signingMessage: HexString.fromUint8Array(serializedMessage).toString(),
+                nonce: sessionInfo.sessionId
+            };
+            response.send(createResponse);
         } catch (e: any) {
             // TODO: Make 400s better codes
             response.status(400).send(toError(e));
@@ -92,26 +97,73 @@ const runServer = async () => {
             let sessionInfo = db.get(address);
 
             // Remove the auth nonce
-            let ret = {
+            let userResponse: UserResponse = {
                 accountAddress: sessionInfo.accountAddress,
                 sessionId: sessionInfo.sessionId,
                 loggedIn: sessionInfo.loggedIn,
                 timestamp: sessionInfo.timestamp,
             }
-            response.send(ret);
+            response.send(userResponse);
         } catch (e: any) {
             // TODO: Make 400s better codes
             response.status(400).send(toError(e));
         }
     });
 
-    app.get("/mint", async (request: Request, response: Response) => {
+    app.post("/mint/fighter", async (request: Request, response: Response) => {
         let auth = authenticate(request, response);
         if (!auth.success) {
             return;
         }
-        // TODO add minting
 
+        let hash = await minter.mintFighter(auth.address);
+        response.send({
+            hash: hash
+        });
+    });
+
+    app.post("/mint/wing", async (request: Request, response: Response) => {
+        let auth = authenticate(request, response);
+        if (!auth.success) {
+            return;
+        }
+
+        let hash = await minter.mintWing(auth.address);
+        response.send({
+            hash: hash
+        });
+    });
+
+    app.post("/mint/body", async (request: Request, response: Response) => {
+        let auth = authenticate(request, response);
+        if (!auth.success) {
+            return;
+        }
+
+        let hash = await minter.mintBody(auth.address);
+        response.send({
+            hash: hash
+        });
+    });
+
+
+    app.post("/swapOrAddParts", async (request: Request, response: Response) => {
+        let auth = authenticate(request, response);
+        if (!auth.success) {
+            return;
+        }
+        const {body} = request;
+
+        // Guard wrong input
+        if (!isSwapOrAddInput(body)) {
+            response.status(400).send(toError("Invalid swapOrAdd input"));
+            return;
+        }
+
+        let hash = await gameClient.swapOrAddParts(body);
+        response.send({
+            hash: hash
+        });
     });
 
     app.get("/logout", async (request: Request, response: Response) => {
@@ -119,13 +171,13 @@ const runServer = async () => {
         if (!auth.success) {
             return;
         }
-        db.delete(auth.address!);
+        db.delete(auth.address);
     });
 }
 
 type AuthenticateResponse = {
     success: boolean,
-    address?: string,
+    address: string,
 }
 
 const authenticate = (request: Request, response: Response): AuthenticateResponse => {
@@ -133,13 +185,13 @@ const authenticate = (request: Request, response: Response): AuthenticateRespons
 
     const address = getAddress(request, response);
     if (!address) {
-        return {success: false};
+        return {success: false, address: ""};
     }
 
     let authToken = query["authToken"];
     if (!authToken) {
         response.status(400).send(toError("Missing auth token"));
-        return {success: false};
+        return {success: false, address: ""};
     }
     try {
         let sessionInfo = db.get(address);
@@ -153,7 +205,7 @@ const authenticate = (request: Request, response: Response): AuthenticateRespons
     } catch (e: any) {
         // TODO: Make 400s better codes
         response.status(400).send(toError(e));
-        return {success: false};
+        return {success: false, address: ""};
     }
 }
 
