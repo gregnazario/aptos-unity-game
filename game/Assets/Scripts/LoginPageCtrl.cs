@@ -17,6 +17,6 @@ public class LoginPageCtrl : MonoBehaviour
   public async void Login()
   {
     await _icDappClient.connect();
-    SceneManager.LoadScene("MainMenu");
+    // SceneManager.LoadScene("MainMenu");
   }
 }

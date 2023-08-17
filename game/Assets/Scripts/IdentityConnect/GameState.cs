@@ -8,10 +8,14 @@ using Newtonsoft.Json;
 [Serializable]
 public struct ICPairingData
 {
-  public string pairingId;
   public string accountAddress;
+  public string accountEd25519PublicKeyB64;
+  public string accountTransportEd25519PublicKeyB64;
+  public string currSequenceNumber;
+  public string dappEd25519PublicKeyB64;
+  public string dappEd25519SecretKeyB64;
+  public string pairingId;
 }
-
 
 public static class GameState
 {

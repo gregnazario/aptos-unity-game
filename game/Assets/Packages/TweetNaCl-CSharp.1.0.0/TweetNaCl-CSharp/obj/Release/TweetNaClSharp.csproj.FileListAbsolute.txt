@@ -1,0 +1,4 @@
+C:\Users\linki.LINKI_SYSTEM\Source\Repos\tweetnacl-cs\src\TweetNaClSharp\bin\Release\TweetNaClSharp.dll
+C:\Users\linki.LINKI_SYSTEM\Source\Repos\tweetnacl-cs\src\TweetNaClSharp\bin\Release\TweetNaClSharp.pdb
+C:\Users\linki.LINKI_SYSTEM\Source\Repos\tweetnacl-cs\src\TweetNaClSharp\obj\Release\TweetNaClSharp.dll
+C:\Users\linki.LINKI_SYSTEM\Source\Repos\tweetnacl-cs\src\TweetNaClSharp\obj\Release\TweetNaClSharp.pdb

@@ -1,0 +1,5 @@
+C:\Users\linki.LINKI_SYSTEM\source\repos\tweetnacl-cs\src\TweetNaCl-CSharp\bin\Debug\TweetNaCl-CSharp.dll
+C:\Users\linki.LINKI_SYSTEM\source\repos\tweetnacl-cs\src\TweetNaCl-CSharp\bin\Debug\TweetNaCl-CSharp.pdb
+C:\Users\linki.LINKI_SYSTEM\source\repos\tweetnacl-cs\src\TweetNaCl-CSharp\obj\Debug\TweetNaCl-CSharp.csprojResolveAssemblyReference.cache
+C:\Users\linki.LINKI_SYSTEM\source\repos\tweetnacl-cs\src\TweetNaCl-CSharp\obj\Debug\TweetNaCl-CSharp.dll
+C:\Users\linki.LINKI_SYSTEM\source\repos\tweetnacl-cs\src\TweetNaCl-CSharp\obj\Debug\TweetNaCl-CSharp.pdb
