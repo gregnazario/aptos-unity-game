@@ -15,6 +15,8 @@ export interface Database {
 
     get(accountAddress: string): SigningMessage;
 
+    getInner(accountAddress: string): SessionInfo;
+
     delete(accountAddress: string): void;
 }
 
@@ -96,10 +98,14 @@ export class InMemoryDatabase implements Database {
     }
 
     get(accountAddress: string): SigningMessage {
+        return signingMessage(this.getInner(accountAddress));
+    }
+
+    getInner(accountAddress: string): SessionInfo {
         let address = cleanupAddress(accountAddress);
         let currentSession: SessionInfo | undefined = this.db.get(address);
         if (currentSession) {
-            return signingMessage(currentSession);
+            return currentSession;
         } else {
             throw new Error(`Session not found for account address: '${address}'`);
         }

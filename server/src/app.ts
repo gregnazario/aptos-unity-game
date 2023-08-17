@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import {HexString, Network, Provider} from "aptos";
 import {InMemoryDatabase} from "./database";
 import {cleanupAddress, serializeSigningMessage, signingMessage} from "./utils";
+import {toError} from "./types";
 
 dotenv.config();
 const PORT = process.env.PORT || 8080;
@@ -40,7 +41,7 @@ const runServer = async () => {
         const {query} = request;
         let accountAddress = query["accountAddress"];
         if (!accountAddress) {
-            response.status(400).send("Missing account address");
+            response.status(400).send(toError("Missing account address"));
             return;
         }
         let address = cleanupAddress(accountAddress.toString());
@@ -50,10 +51,12 @@ const runServer = async () => {
             // TODO: Handle current session being too long
             let sessionInfo = db.create(address, newSession);
             let serializedMessage = serializeSigningMessage(signingMessage(sessionInfo));
-            response.send(HexString.fromUint8Array(serializedMessage).toString());
+            response.send({
+                signingMessage: HexString.fromUint8Array(serializedMessage).toString()
+            });
         } catch (e: any) {
             // TODO: Make 400s better codes
-            response.status(400).send(e.message);
+            response.status(400).send(toError(e));
         }
     });
 
@@ -63,16 +66,13 @@ const runServer = async () => {
         try {
             let nonce = db.login(body);
 
-            // TODO: Stronger type the output once we've settled on it
-            let res = {
-                authToken: nonce
-            };
-
             // If we verify the signature, say the login is successful
-            response.status(200).send(res);
+            response.status(200).send({
+                authToken: nonce
+            });
         } catch (e: any) {
             // TODO: Make 400s better codes
-            response.status(400).send(e.message);
+            response.status(400).send(toError(e));
         }
     });
 
@@ -80,7 +80,7 @@ const runServer = async () => {
         const {query} = request;
         let accountAddress = query["accountAddress"];
         if (!accountAddress) {
-            response.status(400).send("Missing account address");
+            response.status(400).send(toError("Missing account address"));
             return;
         }
         try {
@@ -88,7 +88,31 @@ const runServer = async () => {
             response.send(sessionInfo);
         } catch (e: any) {
             // TODO: Make 400s better codes
-            response.status(400).send(e.message);
+            response.status(400).send(toError(e));
+        }
+    });
+
+    app.get("/submit", async (request: Request, response: Response) => {
+        const {query} = request;
+        let accountAddress = query["accountAddress"];
+        if (!accountAddress) {
+            response.status(400).send(toError("Missing account address"));
+            return;
+        }
+        let authToken = query["authToken"];
+
+        try {
+            let sessionInfo = db.getInner(accountAddress.toString());
+            if (!sessionInfo.loggedIn) {
+                response.status(403).send(toError("User not logged in"));
+            }
+            if (sessionInfo.authNonce !== authToken) {
+                response.status(403).send(toError("Invalid auth token"));
+            }
+            response.send({});
+        } catch (e: any) {
+            // TODO: Make 400s better codes
+            response.status(400).send(toError(e));
         }
     });
 }
