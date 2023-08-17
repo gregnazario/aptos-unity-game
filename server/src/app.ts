@@ -59,6 +59,7 @@ const runServer = async () => {
         }
 
         let newSession = query["newSession"] === "true";
+        console.log(`/create ${address} : newSession=${newSession}`);
         try {
             // TODO: Handle current session being too long
             let sessionInfo = db.create(address, newSession);
@@ -77,6 +78,7 @@ const runServer = async () => {
     // Logs in the user and returns an auth nonce
     app.post("/login", async (request: Request, response: Response) => {
         const {body} = request;
+        console.log(`/login ${JSON.stringify(body)}`);
 
         try {
             let nonce = db.login(body);
@@ -97,6 +99,7 @@ const runServer = async () => {
         if (!address) {
             return;
         }
+        console.log(`/user ${address}`);
 
         try {
             let sessionInfo = db.get(address);
@@ -121,6 +124,7 @@ const runServer = async () => {
         if (!address) {
             return;
         }
+        console.log(`/inventory ${address}`);
 
         // TODO Retrieve inventory
         let inventoryResponse: InventoryResponse = {
@@ -139,6 +143,7 @@ const runServer = async () => {
         if (!auth.success) {
             return;
         }
+        console.log(`/mint/fighter ${auth.address}`)
 
         let hash = await minter.mintFighter(auth.address);
         response.send({
@@ -152,6 +157,7 @@ const runServer = async () => {
         if (!auth.success) {
             return;
         }
+        console.log(`/mint/wing ${auth.address}`);
 
         let hash = await minter.mintWing(auth.address);
         response.send({
@@ -165,6 +171,7 @@ const runServer = async () => {
         if (!auth.success) {
             return;
         }
+        console.log(`/mint/body ${auth.address}`);
 
         let hash = await minter.mintBody(auth.address);
         response.send({
@@ -173,16 +180,17 @@ const runServer = async () => {
     });
 
     // Swaps parts for the ship
-    app.post("/swapOrAddParts", async (request: Request, response: Response) => {
+    app.post("/swap", async (request: Request, response: Response) => {
         let auth = authenticate(request, response);
         if (!auth.success) {
             return;
         }
         const {body} = request;
+        console.log(`/swap ${auth.address} ${JSON.stringify(body)}`);
 
         // Guard wrong input
         if (!isSwapOrAddInput(body)) {
-            response.status(400).send(toError("Invalid swapOrAdd input"));
+            response.status(400).send(toError("Invalid swap input"));
             return;
         }
 
@@ -198,6 +206,7 @@ const runServer = async () => {
         if (!auth.success) {
             return;
         }
+        console.log(`/logout ${auth.address}`);
         db.delete(auth.address);
     });
 }
