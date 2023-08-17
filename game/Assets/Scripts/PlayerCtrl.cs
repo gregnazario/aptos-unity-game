@@ -18,7 +18,6 @@ public class PlayerCtrl : MonoBehaviour
     spriteRenderer.gameObject.SetActive(false);
 
     GameObject brokenPlane = GameObject.Instantiate(brokenPlanePrefab, this.transform.position, this.transform.rotation, this.transform);
-
     foreach (Transform child in brokenPlane.transform)
     {
       var partRigidbody = child.GetComponent<Rigidbody2D>();

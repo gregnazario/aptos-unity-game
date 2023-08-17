@@ -379,6 +379,7 @@ GameObject:
   - component: {fileID: 1513067013}
   - component: {fileID: 1513067012}
   - component: {fileID: 1513067011}
+  - component: {fileID: 1513067015}
   m_Layer: 5
   m_Name: '[UI]'
   m_TagString: Untagged
@@ -470,6 +471,18 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 0}
+--- !u!114 &1513067015
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1513067010}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 47927a5761f6442a5935335d7e718114, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1754865933
 GameObject:
   m_ObjectHideFlags: 0
@@ -553,9 +566,9 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
-        m_TargetAssemblyTypeName: MainMenuCtrl, Assembly-CSharp
-        m_MethodName: PlayNewGame
+      - m_Target: {fileID: 1513067015}
+        m_TargetAssemblyTypeName: LoginPageCtrl, Assembly-CSharp
+        m_MethodName: Login
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
