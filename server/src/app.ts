@@ -20,9 +20,9 @@ if (process.env.PRIVATE_KEY) {
 
 export const APTOS = new Provider(Network.DEVNET);
 export let ACCOUNT = new AptosAccount(serverPrivateKey);
+const db = new InMemoryDatabase();
 
 const runServer = async () => {
-    let db = new InMemoryDatabase();
 
     const app = express();
     app.disable('x-powered-by');
@@ -47,12 +47,10 @@ const runServer = async () => {
     // TODO: Make post instead of get
     app.get("/create", async (request: Request, response: Response) => {
         const {query} = request;
-        let accountAddress = query["accountAddress"];
-        if (!accountAddress) {
-            response.status(400).send(toError("Missing account address"));
-            return;
+        const address = getAddress(request, response);
+        if (!address) {
+            return false;
         }
-        let address = cleanupAddress(accountAddress.toString());
 
         let newSession = query["newSession"] === "true";
         try {
@@ -85,14 +83,13 @@ const runServer = async () => {
     });
 
     app.get("/user", async (request: Request, response: Response) => {
-        const {query} = request;
-        let accountAddress = query["accountAddress"];
-        if (!accountAddress) {
-            response.status(400).send(toError("Missing account address"));
+        const address = getAddress(request, response);
+        if (!address) {
             return;
         }
+
         try {
-            let sessionInfo = db.get(accountAddress.toString());
+            let sessionInfo = db.get(address);
 
             // Remove the auth nonce
             let ret = {
@@ -108,29 +105,73 @@ const runServer = async () => {
         }
     });
 
-    app.get("/submit", async (request: Request, response: Response) => {
-        const {query} = request;
-        let accountAddress = query["accountAddress"];
-        if (!accountAddress) {
-            response.status(400).send(toError("Missing account address"));
+    app.get("/mint", async (request: Request, response: Response) => {
+        let auth = authenticate(request, response);
+        if (!auth.success) {
             return;
         }
-        let authToken = query["authToken"];
+        // TODO add minting
 
-        try {
-            let sessionInfo = db.get(accountAddress.toString());
-            if (!sessionInfo.loggedIn) {
-                response.status(403).send(toError("User not logged in"));
-            }
-            if (sessionInfo.authNonce !== authToken) {
-                response.status(403).send(toError("Invalid auth token"));
-            }
-            response.send({});
-        } catch (e: any) {
-            // TODO: Make 400s better codes
-            response.status(400).send(toError(e));
-        }
     });
+
+    app.get("/logout", async (request: Request, response: Response) => {
+        let auth = authenticate(request, response);
+        if (!auth.success) {
+            return;
+        }
+        db.delete(auth.address!);
+    });
+}
+
+type AuthenticateResponse = {
+    success: boolean,
+    address?: string,
+}
+
+const authenticate = (request: Request, response: Response): AuthenticateResponse => {
+    const {query} = request;
+
+    const address = getAddress(request, response);
+    if (!address) {
+        return {success: false};
+    }
+
+    let authToken = query["authToken"];
+    if (!authToken) {
+        response.status(400).send(toError("Missing auth token"));
+        return {success: false};
+    }
+    try {
+        let sessionInfo = db.get(address);
+        if (!sessionInfo.loggedIn) {
+            response.status(403).send(toError("User not logged in"));
+        }
+        if (sessionInfo.authNonce !== authToken) {
+            response.status(403).send(toError("Invalid auth token"));
+        }
+        return {success: true, address: address};
+    } catch (e: any) {
+        // TODO: Make 400s better codes
+        response.status(400).send(toError(e));
+        return {success: false};
+    }
+}
+
+const getAddress = (request: Request, response: Response): string | undefined => {
+    const {query} = request;
+
+    let accountAddress = query["accountAddress"];
+    if (!accountAddress) {
+        response.status(400).send(toError("Missing account address"));
+        return undefined;
+    }
+
+    try {
+        return cleanupAddress(accountAddress.toString());
+    } catch (e: any) {
+        response.status(400).send(toError(e));
+        return undefined;
+    }
 }
 
 runServer();
