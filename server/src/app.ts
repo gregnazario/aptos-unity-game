@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 import {AptosAccount, HexString, Network, Provider} from "aptos";
 import {InMemoryDatabase} from "./database";
 import {cleanupAddress, serializeSigningMessage, signingMessage} from "./utils";
-import {CreateResponse, isMintInput, isSwapOrAddInput, toError, UserResponse} from "./types";
+import {CreateResponse, InventoryResponse, isMintInput, isSwapOrAddInput, toError, UserResponse} from "./types";
 import {GameClient, Minter} from "./gameClient";
 
 dotenv.config();
@@ -47,8 +47,8 @@ const runServer = async () => {
         response.send(status);
     });
 
-    // TODO: Make post instead of get
-    app.get("/create", async (request: Request, response: Response) => {
+    // Creates a session for the user.  Query argument `newSession=true` will delete the previous session first
+    app.post("/create", async (request: Request, response: Response) => {
         const {query} = request;
         const address = getAddress(request, response);
         if (!address) {
@@ -71,6 +71,7 @@ const runServer = async () => {
         }
     });
 
+    // Logs in the user and returns an auth nonce
     app.post("/login", async (request: Request, response: Response) => {
         const {body} = request;
 
@@ -87,6 +88,7 @@ const runServer = async () => {
         }
     });
 
+    // Retrieves session info for the account (without the auth nonce)
     app.get("/user", async (request: Request, response: Response) => {
         const address = getAddress(request, response);
         if (!address) {
@@ -110,6 +112,25 @@ const runServer = async () => {
         }
     });
 
+    // Retrieves the inventory for the account
+    app.get("/inventory", async (request: Request, response: Response) => {
+        const address = getAddress(request, response);
+        if (!address) {
+            return;
+        }
+
+        // TODO Retrieve inventory
+        let inventoryResponse: InventoryResponse = {
+            owner: address,
+            fighters: [],
+            wings: [],
+            bodies: [],
+        };
+        response.send(inventoryResponse);
+
+    });
+
+    // Mints a random fighter
     app.post("/mint/fighter", async (request: Request, response: Response) => {
         let auth = authenticate(request, response);
         if (!auth.success) {
@@ -122,6 +143,7 @@ const runServer = async () => {
         });
     });
 
+    // Mints a random wing
     app.post("/mint/wing", async (request: Request, response: Response) => {
         let auth = authenticate(request, response);
         if (!auth.success) {
@@ -134,6 +156,7 @@ const runServer = async () => {
         });
     });
 
+    // Mints a random body
     app.post("/mint/body", async (request: Request, response: Response) => {
         let auth = authenticate(request, response);
         if (!auth.success) {
@@ -146,7 +169,7 @@ const runServer = async () => {
         });
     });
 
-
+    // Swaps parts for the ship
     app.post("/swapOrAddParts", async (request: Request, response: Response) => {
         let auth = authenticate(request, response);
         if (!auth.success) {
@@ -166,6 +189,7 @@ const runServer = async () => {
         });
     });
 
+    // Logs out of the session and destroys the auth nonce
     app.get("/logout", async (request: Request, response: Response) => {
         let auth = authenticate(request, response);
         if (!auth.success) {

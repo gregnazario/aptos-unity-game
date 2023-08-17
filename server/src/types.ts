@@ -1,10 +1,7 @@
 export type SessionInfo = {
-    accountAddress: string,
-    sessionId: string,
-    timestamp: number,
     loggedIn: boolean,
     authNonce: string,
-};
+} & SigningMessage;
 
 export type SigningMessage = {
     accountAddress: string,
@@ -20,10 +17,7 @@ export type Signature = {
 
 export type LoginRequest = {
     message: string,
-    signature: string
-    publicKey: string,
-    accountAddress: string,
-}
+} & Signature;
 
 export type CreateResponse = {
     signingMessage: string,
@@ -31,11 +25,8 @@ export type CreateResponse = {
 }
 
 export type UserResponse = {
-    accountAddress: string,
-    sessionId: string,
     loggedIn: boolean
-    timestamp: number
-}
+} & SigningMessage;
 
 export type ErrorResponse = {
     message: string,
@@ -55,12 +46,7 @@ export const toError = (error: any): ErrorResponse => {
 
 export type MintInput = {
     destination_address: string,
-    token_name: string,
-    token_description: string,
-    token_uri: string,
-    health: number,
-    speed: number
-}
+} & ItemProperties
 
 export const isMintInput = (input: any): input is MintInput => {
     let maybeInput = (input as MintInput);
@@ -90,3 +76,22 @@ export const isSwapOrAddInput = (input: any): input is SwapOrAddInput => {
             maybeInput.body === undefined || typeof maybeInput.body === "string"
         )
 }
+
+export type ItemProperties = {
+    token_name: string,
+    token_description: string,
+    token_uri: string,
+    health: number,
+    speed: number
+}
+
+export type InventoryResponse = {
+    owner: string,
+    fighters: Fighter[],
+    wings: Wing[],
+    bodies: Body[],
+}
+
+export type Fighter = {} & ItemProperties
+export type Body = {} & ItemProperties
+export type Wing = {} & ItemProperties
