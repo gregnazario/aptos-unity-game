@@ -6,7 +6,7 @@ import {AptosAccount, HexString, Network, Provider} from "aptos";
 import {InMemoryDatabase} from "./database";
 import {cleanupAddress, serializeSigningMessage, signingMessage} from "./utils";
 import {CreateResponse, InventoryResponse, isMintInput, isSwapOrAddInput, toError, UserResponse} from "./types";
-import {GameClient, Minter} from "./gameClient";
+import {GameClient, Minter, MODULE_ADDRESS} from "./gameClient";
 
 dotenv.config();
 
@@ -19,7 +19,7 @@ if (process.env.PRIVATE_KEY) {
     serverPrivateKey = undefined;
 }
 
-export const APTOS = new Provider(Network.DEVNET);
+export const APTOS = new Provider(Network.TESTNET);
 export let ACCOUNT = new AptosAccount(serverPrivateKey);
 const db = new InMemoryDatabase();
 const minter = new Minter(APTOS, ACCOUNT);
@@ -36,6 +36,9 @@ const runServer = async () => {
 
     app.listen(PORT, () => {
         console.log("Starfighter server listening on PORT: ", PORT);
+        console.log("Server account address: ", ACCOUNT.address().hex());
+        console.log("Connected to network: ", APTOS.network);
+        console.log("Module address: ", MODULE_ADDRESS);
     });
 
     // TODO: Provide actual game status underneath

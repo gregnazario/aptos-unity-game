@@ -10,7 +10,7 @@ import {
 } from "./utils";
 import {BODIES, FIGHTERS, WINGS} from "./assets";
 
-const MODULE_ADDRESS = "0x72051a1da89698e7cf185d8e1e6a2c9a8835337d3d7015f97f054e2e4864d15a"
+export const MODULE_ADDRESS = "0x72051a1da89698e7cf185d8e1e6a2c9a8835337d3d7015f97f054e2e4864d15a"
 const MODULE_NAME = "composable_nfts"
 
 export class Minter {
