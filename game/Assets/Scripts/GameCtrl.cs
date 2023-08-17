@@ -13,6 +13,6 @@ public class GameCtrl : MonoBehaviour
 
   public void restart()
   {
-    SceneManager.LoadScene("Main");
+    SceneManager.LoadScene("Game");
   }
 }

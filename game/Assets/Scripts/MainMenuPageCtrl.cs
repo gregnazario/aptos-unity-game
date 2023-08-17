@@ -15,6 +15,6 @@ public class MainMenuPageCtrl : MonoBehaviour
   public void PlayNewGame()
   {
     Debug.Log("Clicked");
-    SceneManager.LoadScene("Main");
+    SceneManager.LoadScene("Game");
   }
 }
