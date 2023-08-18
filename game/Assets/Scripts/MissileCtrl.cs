@@ -4,7 +4,6 @@ using UnityEngine;
 
 public class MissileCtrl : MonoBehaviour
 {
-  public GameObject dustPrefab;
   public GameObject explosionEffectPrefab;
 
   public Transform target;
@@ -18,7 +17,6 @@ public class MissileCtrl : MonoBehaviour
   void Start()
   {
     this._rigidbody = GetComponent<Rigidbody2D>();
-    StartCoroutine(makingDust());
   }
 
   void FixedUpdate()
@@ -30,16 +28,6 @@ public class MissileCtrl : MonoBehaviour
       direction.Normalize();
       float angle = Vector3.Cross(direction, transform.up).z;
       this._rigidbody.angularVelocity = -rotationSpeed * angle;
-    }
-  }
-
-  IEnumerator makingDust()
-  {
-    while (gameObject)
-    {
-      yield return new WaitForSeconds(dustWait);
-      GameObject dustTemp = GameObject.Instantiate(this.dustPrefab, transform.position, this.dustPrefab.transform.rotation);
-      GameObject.Destroy(dustTemp, 4f);
     }
   }
 

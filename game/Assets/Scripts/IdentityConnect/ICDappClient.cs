@@ -12,9 +12,21 @@ using TweetNaCl;
 
 using Chaos.NaCl.Internal.Ed25519Ref10;
 using Chaos.NaCl;
+using Org.BouncyCastle.Crypto.Digests;
+using System.Linq;
 
 public class ICCrypto
 {
+  public static KeyPair generateEd25519Keypair()
+  {
+    var random = new System.Random();
+    var seed = new byte[32];
+    random.NextBytes(seed);
+
+    Chaos.NaCl.Ed25519.KeyPairFromSeed(out var publicKey, out var secretKey, seed);
+    return new KeyPair(publicKey, secretKey);
+  }
+
   public static byte[] convertPublicKey(byte[] ed25519PublicKey)
   {
     FieldElement montgomeryX, edwardsY, edwardsZ;
@@ -70,6 +82,28 @@ public class ICCrypto
   // }
 }
 
+public struct SerializedEncryptionResult
+{
+  public string nonceB64;
+  public string securedB64;
+}
+
+public struct EnvelopeMetadata
+{
+  public string receiverEd25519PublicKeyB64;
+  public string senderEd25519PublicKeyB64;
+  public string senderX25519PublicKeyB64;
+  public int sequence;
+  public long timestampMillis;
+}
+
+public struct SecuredEnvelopeTransport
+{
+  public SerializedEncryptionResult encryptedPrivateMessage;
+  public string messageSignature;
+  public string serializedPublicMessage;
+}
+
 public class ICSecuredEnvelopeBuilder
 {
   KeyPair senderEd25519KeyPair;
@@ -90,21 +124,21 @@ public class ICSecuredEnvelopeBuilder
 
     this.senderEd25519SecretKeyB64 = Convert.ToBase64String(this.senderEd25519KeyPair.SecretKey);
     this.senderEd25519PublicKeyB64 = Convert.ToBase64String(this.senderEd25519KeyPair.PublicKey);
+    this.receiverEd25519PublicKeyB64 = Convert.ToBase64String(this.receiverEd25519PublicKey);
     this.senderX25519SecretKeyB64 = Convert.ToBase64String(this.senderX25519KeyPair.SecretKey);
     this.senderX25519PublicKeyB64 = Convert.ToBase64String(this.senderX25519KeyPair.PublicKey);
   }
 
-  private dynamic constructMetadata()
+  private EnvelopeMetadata constructMetadata(int sequence)
   {
-    var sequence = 0;
     var timestampMillis = new DateTimeOffset(DateTime.Now.ToUniversalTime()).ToUnixTimeMilliseconds();
-    return new
+    return new EnvelopeMetadata
     {
-      this.receiverEd25519PublicKey,
-      this.senderEd25519PublicKeyB64,
-      this.senderX25519PublicKeyB64,
-      sequence,
-      timestampMillis,
+      receiverEd25519PublicKeyB64 = this.receiverEd25519PublicKeyB64,
+      senderEd25519PublicKeyB64 = this.senderEd25519PublicKeyB64,
+      senderX25519PublicKeyB64 = this.senderX25519PublicKeyB64,
+      sequence = sequence,
+      timestampMillis = timestampMillis,
     };
   }
 
@@ -126,27 +160,65 @@ public class ICSecuredEnvelopeBuilder
     return (nonce, secured);
   }
 
-  public dynamic signAndEncryptEnvelope<TPublic, TPrivate>(TPublic publicMessage, TPrivate privateMessage)
+  private string toHex(byte[] bytes)
   {
-    var metadata = this.constructMetadata();
+    return "0x" + string.Concat(bytes.Select(b => b.ToString("x2")).ToArray());
+  }
+
+  private byte[] concatBytes(byte[] lhs, byte[] rhs)
+  {
+    byte[] result = new byte[lhs.Length + rhs.Length];
+    Buffer.BlockCopy(lhs, 0, result, 0, lhs.Length);
+    Buffer.BlockCopy(rhs, 0, result, lhs.Length, rhs.Length);
+    return result;
+  }
+
+  private byte[] sha3_256(byte[] input)
+  {
+    Sha256Digest sha256Digest = new Sha256Digest();
+    sha256Digest.BlockUpdate(input, 0, input.Length);
+    var output = new byte[sha256Digest.GetDigestSize()];
+    sha256Digest.DoFinal(output, 0);
+    return output;
+  }
+
+  public SecuredEnvelopeTransport encryptAndSignEnvelope<TPublic, TPrivate>(int sequenceNumber, TPublic publicMessage, TPrivate privateMessage)
+  {
     var (nonce, secured) = encryptObject(privateMessage);
     var nonceB64 = Convert.ToBase64String(nonce);
     var securedB64 = Convert.ToBase64String(nonce);
-    var encryptedPrivateMessage = new { nonceB64, securedB64 };
+    var encryptedPrivateMessage = new SerializedEncryptionResult { nonceB64 = nonceB64, securedB64 = securedB64 };
 
-    JObject jsonPublicMessage = JObject.FromObject(publicMessage);
-    // jsonPublicMessage["_metadata"] = metadata;
-
+    var metadata = this.constructMetadata(sequenceNumber);
+    var jsonMetadata = JObject.FromObject(metadata);
+    var jsonPublicMessage = JObject.FromObject(publicMessage);
+    jsonPublicMessage.Add("_metadata", jsonMetadata);
     var serializedPublicMessage = JsonConvert.SerializeObject(jsonPublicMessage);
-    // var serializedMetadata = JsonConvert.SerializeObject(metadata);
 
-    var messageSignature = "";
+    var privateMessageBytes = secured;
+    var publicMessageBytes = Encoding.UTF8.GetBytes(serializedPublicMessage);
 
-    return new
+    var publicHash = sha3_256(publicMessageBytes);
+    var privateHash = sha3_256(privateMessageBytes);
+    byte[] combinedHash = concatBytes(publicHash, privateHash);
+
+    var messageHashBytes = sha3_256(combinedHash);
+
+    var prefix = "APTOS::IDENTITY_CONNECT::SECURED_ENVELOPE::";
+    var prefixBytes = Encoding.UTF8.GetBytes(prefix);
+    var hashedPrefix = sha3_256(prefixBytes);
+
+    var finalMessage = sha3_256(concatBytes(hashedPrefix, messageHashBytes));
+
+    var signatureBytes = TweetNaCl.TweetNaCl.CryptoSign(finalMessage, this.senderEd25519KeyPair.SecretKey);
+
+    var messageSignature = toHex(signatureBytes);
+
+    return new SecuredEnvelopeTransport
     {
-      encryptedPrivateMessage,
-      messageSignature,
-      serializedPublicMessage
+      encryptedPrivateMessage = encryptedPrivateMessage,
+      messageSignature = messageSignature,
+      serializedPublicMessage = serializedPublicMessage
     };
   }
 
@@ -159,10 +231,18 @@ public class ICDappClient
   private const string BASE_URL = "https://identity-connect.staging.gcp.aptosdev.com";
 
   private HttpClient _httpClient = new HttpClient();
-
-  private static ICPairingData? IcPairing
+  private ICPairingData? IcPairing
   {
-    get => GameState.Get<ICPairingData>("icPairing");
+    get => new ICPairingData
+    {
+      accountAddress = "0xc548e1a9be477f2dd3ec381da1e000a3b1108d86c7f847f70fa54002ddcf72b8",
+      accountEd25519PublicKeyB64 = "DA9svayWjeDsRowHK8DS/3Ra5MfMfnx4MEuU/pgWZGA=",
+      accountTransportEd25519PublicKeyB64 = "8uLgS1rKdR+DV8HLdmP3V3ItIRzEt1KD/Pk/LcjrlOI=",
+      currSequenceNumber = 0,
+      dappEd25519SecretKeyB64 = "u5kO8AXtLG+dCd5jYDPdYW8+yMbPDqxoF8JhlH4DY2YmPJG7YlfuM3yUZnLRrMTiyUUgH3iE8eBONcvhbW78fA==",
+      dappEd25519PublicKeyB64 = "JjyRu2JX7jN8lGZy0azE4slFIB94hPHgTjXL4W1u/Hw=",
+      pairingId = "2ce68e0b-963a-4b87-8cbd-d24f77c99480",
+    };
     set => GameState.Set<ICPairingData>("icPairing", value);
   }
 
@@ -191,44 +271,63 @@ public class ICDappClient
     return responseBody["data"]["pairing"].Value<string>("id");
   }
 
-  private async Task<string> createSigningRequest(string type, object requestBody)
+  private async Task createSigningRequest<TRequestBody>(string type, TRequestBody requestBody)
   {
-    var pairingId = "";
-    var serializedRequestBody = JsonConvert.SerializeObject(new
+    if (IcPairing == null)
     {
+      throw new Exception("No paired account");
+    }
+    var icPairing = IcPairing.Value;
 
-    });
+    var dappKeypair = new KeyPair(
+      Convert.FromBase64String(icPairing.dappEd25519PublicKeyB64),
+      Convert.FromBase64String(icPairing.dappEd25519SecretKeyB64)
+    );
+    var accountTransportPublicKey = Convert.FromBase64String(icPairing.accountTransportEd25519PublicKeyB64);
+
+    var builder = new ICSecuredEnvelopeBuilder(dappKeypair, accountTransportPublicKey);
+    var envelope = builder.encryptAndSignEnvelope(
+      icPairing.currSequenceNumber,
+      new
+      {
+        newtorkName = "testnet",
+        requestType = type,
+      }, requestBody);
+
+    var serializedRequestBody = JsonConvert.SerializeObject(envelope);
+
     var requestContent = new StringContent(serializedRequestBody, Encoding.UTF8, "application/json");
-    var response = await _httpClient.PostAsync($"{BASE_URL}/v1/pairing/${pairingId}/signing-request", requestContent);
+    var response = await _httpClient.PostAsync($"{BASE_URL}/v1/pairing/{icPairing.pairingId}/signing-request", requestContent);
     var serializedResponseBody = await response.Content.ReadAsStringAsync();
     var responseBody = JsonConvert.DeserializeObject<JObject>(serializedResponseBody);
 
     if (response.StatusCode != HttpStatusCode.OK)
     {
+      Debug.Log(responseBody);
       throw new HttpRequestException(responseBody.Value<string>("message"));
     }
-
-    return responseBody["data"]["pairing"].Value<string>("id");
   }
 
   public async Task connect()
   {
-    var keypair = TweetNaCl.TweetNaCl.CryptoBoxKeypair();
-    var publicKeyB64 = Convert.ToBase64String(keypair.PublicKey);
-    // string pairingId = await this.createPairingRequest(publicKeyB64);
-    // Debug.Log(pairingId);
-
-
-    var receiverKeypair = TweetNaCl.TweetNaCl.CryptoBoxKeypair();
-    var builder = new ICSecuredEnvelopeBuilder(keypair, receiverKeypair.PublicKey);
-    var result = builder.signAndEncryptEnvelope(new
+    if (IcPairing == null)
     {
-      publicField = "very public"
-    }, new
+      throw new Exception("No paired account");
+    }
+    var icPairing = IcPairing.Value;
+
+    var dappKeypair = new KeyPair(
+      Convert.FromBase64String(icPairing.dappEd25519PublicKeyB64),
+      Convert.FromBase64String(icPairing.dappEd25519SecretKeyB64)
+    );
+
+    await this.createSigningRequest("SIGN_MESSAGE", new
     {
-      privateField = "incredibly private"
+
     });
-    // Debug.Log(result);
+
+    // var publicKeyB64 = Convert.ToBase64String(dappKeypair.PublicKey);
+    // string pairingId = await this.createPairingRequest(publicKeyB64);
   }
 
   public async Task disconnect()

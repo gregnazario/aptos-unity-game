@@ -8,10 +8,10 @@ public class LoginPageCtrl : MonoBehaviour
   private ICDappClient _icDappClient = new ICDappClient();
   private void Start()
   {
-    if (_icDappClient.isConnected)
-    {
-      SceneManager.LoadScene("MainMenu");
-    }
+    // if (_icDappClient.isConnected)
+    // {
+    //   SceneManager.LoadScene("MainMenu");
+    // }
   }
 
   public async void Login()

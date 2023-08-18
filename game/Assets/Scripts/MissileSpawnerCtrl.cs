@@ -9,6 +9,10 @@ public class MissileSpawnerCtrl : MonoBehaviour
 
   private Coroutine _spawnerCoroutine;
 
+  public float spawnMinTime = 3f;
+  public float spawnMaxTime = 5f;
+  public UnityEngine.AnimationCurve spawnRateCurve;
+
   private void OnEnable()
   {
     this._spawnerCoroutine = StartCoroutine(MissileSpawner());
@@ -21,6 +25,7 @@ public class MissileSpawnerCtrl : MonoBehaviour
 
   IEnumerator MissileSpawner()
   {
+    float elapsed = 0f;
     while (this.enabled)
     {
       int j = 0;
@@ -42,7 +47,14 @@ public class MissileSpawnerCtrl : MonoBehaviour
       var missile = GameObject.Instantiate(missilePrefab, spawnPosition, spawnRotation, this.transform);
       var missileCtrl = missile.GetComponent<MissileCtrl>();
       missileCtrl.target = this.target;
-      yield return new WaitForSeconds(Random.Range(3f, 5f));
+
+      var maxTime = spawnRateCurve.keys[spawnRateCurve.length - 1].time;
+      var multiplier = spawnRateCurve.Evaluate(System.Math.Min(elapsed, maxTime - 0.5f));
+
+      float delay = Random.Range(this.spawnMinTime, this.spawnMaxTime) * multiplier;
+
+      yield return new WaitForSeconds(delay);
+      elapsed += delay;
     }
   }
 

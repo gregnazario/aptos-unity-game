@@ -11,7 +11,7 @@ public struct ICPairingData
   public string accountAddress;
   public string accountEd25519PublicKeyB64;
   public string accountTransportEd25519PublicKeyB64;
-  public string currSequenceNumber;
+  public int currSequenceNumber;
   public string dappEd25519PublicKeyB64;
   public string dappEd25519SecretKeyB64;
   public string pairingId;
