@@ -24,5 +24,7 @@ rev = 'framework-mainnet'
 subdir = 'aptos-move/framework/aptos-token'
 
 [addresses]
-# compose = "_"
 space_fighters = "_"
+
+# [dev-addresses]
+# space_fighters = "0x123"

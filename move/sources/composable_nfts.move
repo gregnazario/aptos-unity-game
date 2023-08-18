@@ -1,17 +1,17 @@
 module space_fighters::composable_nfts {
-    use std::bcs;
     use std::error;
     use std::signer;
     use std::string::{String, utf8};
     use std::option::{Self, Option};
 
-    use aptos_framework::account::{Self, SignerCapability};
     use aptos_framework::object::{Self, Object, TransferRef};
     use aptos_token_objects::collection;
     use aptos_token_objects::token;
     use aptos_token_objects::property_map;
     use aptos_framework::event;
-    use aptos_framework::timestamp;
+
+    friend space_fighters::records_nfts;
+    friend space_fighters::payments;
 
     /// The account is not authorized to update the resources.
     const ENOT_AUTHORIZED: u64 = 1;
@@ -20,20 +20,16 @@ module space_fighters::composable_nfts {
 
     const FIGHTER_COLLECTION_NAME: vector<u8> = b"Aptos Space Fighters";
     const FIGHTER_COLLECTION_DESCRIPTION: vector<u8> = b"Play Aptos Space Fighters game and earn rewards!";
-    const FIGHTER_COLLECTION_URI: vector<u8> = b"https://storage.googleapis.com/space-fighters-assets/random-test-fighter.jpeg";
+    const FIGHTER_COLLECTION_URI: vector<u8> = b"https://storage.googleapis.com/space-fighters-assets/collection_fighter.jpg";
     
     const PARTS_COLLECTION_NAME: vector<u8> = b"Aptos Space Fighter Parts";
     const PARTS_COLLECTION_DESCRIPTION: vector<u8> = b"Play Aptos Space Fighters game and improve your fighters with these parts!";
-    const PARTS_COLLECTION_URI: vector<u8> = b"https://storage.googleapis.com/space-fighters-assets/random-test-wings.png";
+    const PARTS_COLLECTION_URI: vector<u8> = b"https://storage.googleapis.com/space-fighters-assets/collection_parts.jpg";
     
     const FIGHTER_TYPE: vector<u8> = b"Fighter";
     const WING_TYPE: vector<u8> = b"Wing";
     const BODY_TYPE: vector<u8> = b"Body";
     
-    struct CreatorConfig has key {
-        resource_signer_cap: SignerCapability,
-    }
-
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
     struct CollectionConfig has key {
         mutator_ref: collection::MutatorRef,
@@ -86,38 +82,27 @@ module space_fighters::composable_nfts {
     }
 
     fun init_module(admin: &signer) {
-        // Construct a seed vector that pseudo-randomizes the resource address generated.
-        let seed_vec = bcs::to_bytes(&timestamp::now_seconds());
-        let (resource_signer, resource_signer_cap) = account::create_resource_account(admin, seed_vec);
-
-        move_to(admin, CreatorConfig {
-            resource_signer_cap,
-        });
-        create_fighter_collection(&resource_signer);
-        create_parts_collection(&resource_signer);
-    }
-
-    public fun get_resource_account_signer(admin: &signer): signer acquires CreatorConfig {
-        assert!(signer::address_of(admin) == @space_fighters, error::permission_denied(ENOT_AUTHORIZED));
-        account::create_signer_with_capability(&borrow_global<CreatorConfig>(@space_fighters).resource_signer_cap)
+        create_fighter_collection(admin);
+        create_parts_collection(admin);
     }
 
     fun create_fighter_collection(
-        resource_account: &signer
+        admin: &signer
     ) {
         collection::create_unlimited_collection(
-            resource_account,
+            admin,
             utf8(FIGHTER_COLLECTION_DESCRIPTION),
             utf8(FIGHTER_COLLECTION_NAME),
             option::none(),
             utf8(FIGHTER_COLLECTION_URI),
         );
     }
+
     fun create_parts_collection(
-        resource_account: &signer
+        admin: &signer
     ) {
         collection::create_unlimited_collection(
-            resource_account,
+            admin,
             utf8(PARTS_COLLECTION_DESCRIPTION),
             utf8(PARTS_COLLECTION_NAME),
             option::none(),
@@ -133,11 +118,10 @@ module space_fighters::composable_nfts {
         token_uri: String,
         health: u64,
         speed: u64,
-    ) acquires CreatorConfig {
+    ) {
         assert!(signer::address_of(admin) == @space_fighters, error::permission_denied(ENOT_AUTHORIZED));
-        let resource_signer = get_resource_account_signer(admin);
         mint_internal(
-            &resource_signer,
+            admin,
             mint_to,
             utf8(FIGHTER_COLLECTION_NAME),
             token_name,
@@ -157,11 +141,10 @@ module space_fighters::composable_nfts {
         token_uri: String,
         health: u64,
         speed: u64,
-    ) acquires CreatorConfig {
+    ) {
         assert!(signer::address_of(admin) == @space_fighters, error::permission_denied(ENOT_AUTHORIZED));
-        let resource_signer = get_resource_account_signer(admin);
         mint_internal(
-            &resource_signer,
+            admin,
             mint_to,
             utf8(PARTS_COLLECTION_NAME),
             token_name,
@@ -180,11 +163,10 @@ module space_fighters::composable_nfts {
         token_uri: String,
         health: u64,
         speed: u64,
-    ) acquires CreatorConfig {
+    ) {
         assert!(signer::address_of(admin) == @space_fighters, error::permission_denied(ENOT_AUTHORIZED));
-        let resource_signer = get_resource_account_signer(admin);
         mint_internal(
-            &resource_signer,
+            admin,
             mint_to,
             utf8(PARTS_COLLECTION_NAME),
             token_name,
@@ -196,54 +178,49 @@ module space_fighters::composable_nfts {
         )
     }
 
-    /// Add or swap parts. If the part isn't being changed, leave it as None
+    /// Add or swap parts. Remove isn't supported.
     entry fun swap_or_add_parts(
         admin: &signer,
         owner: address,
         fighter: Object<Fighter>,
         wing: Option<Object<Wing>>,
         body: Option<Object<Body>>,
-    ) acquires CreatorConfig, Fighter, Wing, Body, TokenMetadata, FighterBaseAttributes, Attributes {
+    ) acquires Fighter, Wing, Body, TokenMetadata, FighterBaseAttributes, Attributes {
         assert!(signer::address_of(admin) == @space_fighters, error::permission_denied(ENOT_AUTHORIZED));
-        let resource_signer = get_resource_account_signer(admin);
         let fighter_obj = borrow_global_mut<Fighter>(object::object_address(&fighter));
         let fighter_address = object::object_address(&fighter);
         // need to make sure that the owner owns the fighter
         assert!(object::is_owner(fighter, owner), error::permission_denied(ENOT_OWNER));
-        // let's first cache the old parts
-        let old_wing = fighter_obj.wings;
-        let old_body = fighter_obj.body;
-        // now let's set the new parts
+
         if (option::is_some(&wing)) {
+            // Transfer old wing
+            let old_wing = fighter_obj.wings;
+            if (option::is_some(&old_wing)) {
+                let transfer_ref = &borrow_global<TokenMetadata>(object::object_address(option::borrow(&old_wing))).transfer_ref;
+                creator_transfer(transfer_ref, owner);
+            };
             let new_wing = *option::borrow(&wing);
+            // even if the old wing was the wing we want to switch to, this will still work
             assert!(object::is_owner(new_wing, owner), error::permission_denied(ENOT_OWNER));
             // Ensure that it's a wing!
             borrow_global_mut<Wing>(object::object_address(option::borrow(&wing)));
             let transfer_ref = &borrow_global<TokenMetadata>(object::object_address(option::borrow(&wing))).transfer_ref;
             option::swap_or_fill(&mut fighter_obj.wings, new_wing);
-            creator_transfer(&resource_signer, transfer_ref, fighter_address);
+            creator_transfer(transfer_ref, fighter_address);
         };
         if (option::is_some(&body)) {
+            let old_body = fighter_obj.body;
+            if (option::is_some(&old_body)) {
+                let transfer_ref = &borrow_global<TokenMetadata>(object::object_address(option::borrow(&old_body))).transfer_ref;
+                creator_transfer(transfer_ref, owner);
+            };
             let new_body = *option::borrow(&body);
             assert!(object::is_owner(new_body, owner), error::permission_denied(ENOT_OWNER));
             // Ensure that it's a body!
             borrow_global_mut<Body>(object::object_address(option::borrow(&body)));
             let transfer_ref = &borrow_global<TokenMetadata>(object::object_address(option::borrow(&body))).transfer_ref;
             option::swap_or_fill(&mut fighter_obj.body, new_body);
-            creator_transfer(&resource_signer, transfer_ref, fighter_address);
-        };
-        // finally, let's transfer old parts back to owner only if we swapped a different part
-        if (option::is_some(&wing) && option::is_some(&old_wing)) {
-            if (object::object_address(option::borrow(&wing)) != object::object_address(option::borrow(&old_wing))) {
-                let transfer_ref = &borrow_global<TokenMetadata>(object::object_address(option::borrow(&old_wing))).transfer_ref;
-                creator_transfer(&resource_signer, transfer_ref, owner);
-            };
-        };
-        if (option::is_some(&body) && option::is_some(&old_body)) {
-            if (object::object_address(option::borrow(&body)) != object::object_address(option::borrow(&old_body))) {
-                let transfer_ref = &borrow_global<TokenMetadata>(object::object_address(option::borrow(&old_body))).transfer_ref;
-                creator_transfer(&resource_signer, transfer_ref, owner);
-            };
+            creator_transfer(transfer_ref, fighter_address);
         };
         update_fighter_attributes(fighter);
     }
@@ -253,7 +230,7 @@ module space_fighters::composable_nfts {
     // ======================================================================
 
     fun mint_internal(
-        resource_signer: &signer,
+        admin: &signer,
         mint_to: address,
         collection: String,
         token_name: String,
@@ -263,8 +240,8 @@ module space_fighters::composable_nfts {
         health: u64,
         speed: u64,
     ) {
-        let constructor_ref = token::create_named_token(
-            resource_signer,
+        let constructor_ref = token::create_from_account(
+            admin,
             collection,
             token_description,
             token_name,
@@ -391,8 +368,7 @@ module space_fighters::composable_nfts {
     }
 
     /// to can be user or object
-    fun creator_transfer(
-        _creator: &signer,
+    public(friend) fun creator_transfer(
         transfer_ref: &TransferRef,
         to: address,
     ) {
