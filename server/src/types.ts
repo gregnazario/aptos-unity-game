@@ -33,7 +33,7 @@ export type ErrorResponse = {
 }
 
 export const toError = (error: any): ErrorResponse => {
-    if (!error?.message) {
+    if (error?.message) {
         return {
             message: error?.message
         };

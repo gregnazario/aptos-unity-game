@@ -1,5 +1,5 @@
 // @ts-ignore
-import express, {Express, Request, Response} from "express";
+import express, {Express, NextFunction, Request, Response} from "express";
 // @ts-ignore
 import dotenv from 'dotenv';
 import {AptosAccount, HexString, Network, Provider} from "aptos";
@@ -33,7 +33,7 @@ const db = new InMemoryDatabase();
 const minter = new Minter(APTOS, ACCOUNT);
 const gameClient = new GameClient(APTOS, ACCOUNT);
 
-// Validate account exists
+// TODO Validate account exists
 
 const runServer = async () => {
 
@@ -42,6 +42,15 @@ const runServer = async () => {
     // TODO: Cookie?
 
     app.use(express.json());
+    app.use((req: Request, res: Response, next: NextFunction) => {
+        let send = res.send;
+        res.send = c => {
+            console.log(`Req: ${req.url} Code: ${res.statusCode}`);
+            res.send = send;
+            return res.send(c);
+        }
+        next();
+    });
 
     // Ensure admin account exists on chain
     await APTOS.getAccount(ACCOUNT.address().hex());
@@ -90,15 +99,16 @@ const runServer = async () => {
     // Logs in the user and returns an auth nonce
     app.post("/login", async (request: Request, response: Response) => {
         const {body} = request;
-        console.log(`/login ${JSON.stringify(body)}`);
 
         try {
             let nonce = await db.login(body);
 
             // If we verify the signature, say the login is successful
-            response.status(200).send({
+            let resp = {
                 authToken: nonce
-            });
+            };
+            console.log("RESPONSE: {}", resp);
+            response.send(resp);
         } catch (e: any) {
             // TODO: Make 400s better codes
             response.status(400).send(toError(e));
@@ -148,8 +158,8 @@ const runServer = async () => {
         if (!auth.success) {
             return;
         }
-        console.log(`/mint/fighter ${auth.address}`)
         let {body} = request;
+        console.log(`/endGame ${auth.address} ${JSON.stringify(body)}`)
 
         if (!isEndGameInput(body)) {
             response.status(400).send(toError("Invalid end game input"));
@@ -191,6 +201,20 @@ const runServer = async () => {
 
         response.send(record);
 
+    });
+
+
+    app.post("/mint/pilot", async (request: Request, response: Response) => {
+        let auth = authenticate(request, response);
+        if (!auth.success) {
+            return;
+        }
+        console.log(`/mint/pilot ${auth.address}`)
+
+        let hash = await minter.mintPilotAndRecords(auth.address);
+        response.send({
+            hash: hash
+        });
     });
 
     // Mints a random fighter

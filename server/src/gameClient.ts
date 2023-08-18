@@ -10,7 +10,7 @@ import {
 } from "./utils";
 import {BODIES, FIGHTERS, WINGS} from "./assets";
 
-export const MODULE_ADDRESS = "0x72051a1da89698e7cf185d8e1e6a2c9a8835337d3d7015f97f054e2e4864d15a"
+export const MODULE_ADDRESS = "0xdf10f16a9cf593a08b473ff535d0d2814b0757275150692010e30eb7c467259e"
 
 const COMPOSED_NFTS = "query GetComposedNFTs($address:string!) {\n" +
     "  current_token_ownerships_v2(\n" +
@@ -225,7 +225,7 @@ export class GameClient {
             "save_game_result",
             [
                 serializeAddress(address),
-                serializeOptionalAddress(endGameInput.pilot),
+                serializeAddress(endGameInput.pilot),
                 serializeU64(endGameInput.gameTime),
             ]
         );
