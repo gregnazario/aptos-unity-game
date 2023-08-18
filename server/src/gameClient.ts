@@ -1,5 +1,5 @@
 import {AptosAccount, BCS, Provider, TxnBuilderTypes} from "aptos";
-import {MintInput, SwapOrAddInput} from "./types";
+import {EndGameInput, MintInput, SwapOrAddInput} from "./types";
 import {
     entryFunctionPayload,
     randomIndex,
@@ -120,4 +120,24 @@ export class GameClient {
         return txn.hash;
     }
 
+    async endGame(endGameInput: EndGameInput): Promise<string> {
+        // TODO: Implement for ending a game
+        /*let payload = entryFunctionPayload(
+            MODULE_ADDRESS,
+            MODULE_NAME,
+            "swap_or_add_parts",
+            [
+                serializeAddress(input.owner),
+                serializeAddress(input.fighter),
+                serializeOptionalAddress(input.wing),
+                serializeOptionalAddress(input.body),
+            ]
+        );
+
+        // TODO: Use the new transaction processor
+        let txn = await this.provider.generateSignSubmitWaitForTransaction(this.account, payload)
+        return txn.hash;
+         */
+        return "";
+    }
 }

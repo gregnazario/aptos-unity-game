@@ -5,7 +5,15 @@ import dotenv from 'dotenv';
 import {AptosAccount, HexString, Network, Provider} from "aptos";
 import {InMemoryDatabase} from "./database";
 import {cleanupAddress, serializeSigningMessage, signingMessage} from "./utils";
-import {CreateResponse, InventoryResponse, isMintInput, isSwapOrAddInput, toError, UserResponse} from "./types";
+import {
+    Balance,
+    CreateResponse,
+    InventoryResponse, isEndGameInput,
+    isMintInput,
+    isSwapOrAddInput, PilotInfo,
+    toError,
+    UserResponse
+} from "./types";
 import {GameClient, Minter, MODULE_ADDRESS} from "./gameClient";
 
 dotenv.config();
@@ -19,11 +27,13 @@ if (process.env.PRIVATE_KEY) {
     serverPrivateKey = undefined;
 }
 
-export const APTOS = new Provider(Network.TESTNET);
+export const APTOS = new Provider(Network.DEVNET);
 export let ACCOUNT = new AptosAccount(serverPrivateKey);
 const db = new InMemoryDatabase();
 const minter = new Minter(APTOS, ACCOUNT);
 const gameClient = new GameClient(APTOS, ACCOUNT);
+
+// Validate account exists
 
 const runServer = async () => {
 
@@ -33,6 +43,8 @@ const runServer = async () => {
 
     app.use(express.json());
 
+    // Ensure admin account exists on chain
+    await APTOS.getAccount(ACCOUNT.address().hex());
 
     app.listen(PORT, () => {
         console.log("Starfighter server listening on PORT: ", PORT);
@@ -134,6 +146,60 @@ const runServer = async () => {
             bodies: [],
         };
         response.send(inventoryResponse);
+
+    });
+
+    // Retrieves the balance
+    app.get("/endGame", async (request: Request, response: Response) => {
+        let auth = authenticate(request, response);
+        if (!auth.success) {
+            return;
+        }
+        console.log(`/mint/fighter ${auth.address}`)
+        let {body} = request;
+
+        if (!isEndGameInput(body)) {
+            response.status(400).send(toError("Invalid end game input"));
+            return;
+        }
+
+        let hash = await gameClient.endGame(body);
+        response.send({
+            hash: hash
+        });
+    });
+
+    // Retrieves the balance
+    app.get("/balance", async (request: Request, response: Response) => {
+        const address = getAddress(request, response);
+        if (!address) {
+            return;
+        }
+        console.log(`/balance ${address}`);
+
+        // TODO Retrieve balance
+        let balance: Balance = {
+            balance: 0
+        };
+        response.send(balance);
+
+    });
+
+    // Retrieves the pilot records
+    app.get("/pilot", async (request: Request, response: Response) => {
+        const address = getAddress(request, response);
+        if (!address) {
+            return;
+        }
+        console.log(`/pilot ${address}`);
+
+        // TODO Retrieve pilot
+        let pilot: PilotInfo = {
+            owner: address,
+            timesPlayed: 0,
+            longestSurvival: 0
+        };
+        response.send(pilot);
 
     });
 

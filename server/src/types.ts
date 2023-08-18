@@ -44,6 +44,18 @@ export const toError = (error: any): ErrorResponse => {
     }
 }
 
+export type EndGameInput = {
+    address: string,
+    game_time: number,
+}
+
+export const isEndGameInput = (input: any): input is EndGameInput => {
+    let maybeInput = (input as EndGameInput);
+
+    return maybeInput.address !== undefined &&
+        maybeInput.game_time !== undefined
+}
+
 export type MintInput = {
     destination_address: string,
 } & ItemProperties
@@ -92,6 +104,19 @@ export type InventoryResponse = {
     bodies: Body[],
 }
 
-export type Fighter = {} & ItemProperties
+export type Fighter = {
+    wing?: Wing,
+    body?: Body,
+} & ItemProperties
 export type Body = {} & ItemProperties
 export type Wing = {} & ItemProperties
+
+export type PilotInfo = {
+    owner: string,
+    timesPlayed: number,
+    longestSurvival: number,
+};
+
+export type Balance = {
+    balance: number,
+}
