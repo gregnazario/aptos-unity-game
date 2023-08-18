@@ -166,6 +166,14 @@ public class BackendClient
     return (response.Value<long>("gamesPlayed"), response.Value<long>("longestSurvival"));
   }
 
+  public async Task<long> balance()
+  {
+    var path = "balance";
+    var query = $"accountAddress={accountAddress}";
+    var response = await get(path, query);
+    return response.Value<long>("balance");
+  }
+
   private async Task<JObject> get(string path, string query)
   {
     var response = await this._httpClient.GetAsync($"http://localhost:8080/{path}?{query}");

@@ -8,13 +8,15 @@ public class MainMenuPageCtrl : MonoBehaviour
 {
   [SerializeField] private Text _gamesPlayed;
   [SerializeField] private Text _maxTime;
+  [SerializeField] private Text _balance;
 
   public async void Start()
   {
     var client = new BackendClient();
-    var (gamesPlayed, maxTime) =await client.pilot();
+    var (gamesPlayed, maxTime) = await client.pilot();
     _gamesPlayed.text = $"{gamesPlayed}";
     _maxTime.text = $"{maxTime} ms";
+    _balance.text = $"{await client.balance() / 100000000.0} APT";
   }
 
   public async void Disconnect()

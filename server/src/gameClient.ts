@@ -198,6 +198,18 @@ export class GameClient {
         }
     }
 
+    async viewBalance(account: string) {
+        let ret = await this.provider.view({
+            function: `0x1::coin::balance`,
+            type_arguments: ["0x1::aptos_coin::AptosCoin"],
+            arguments: [account],
+        })
+
+        let value = Number(ret[0] as string)
+
+        return value;
+    }
+
     async swapOrAddParts(
         input: SwapOrAddInput
     ): Promise<string> {

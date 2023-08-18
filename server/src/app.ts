@@ -183,7 +183,7 @@ const runServer = async () => {
 
         // TODO Retrieve balance
         let balance: Balance = {
-            balance: 0
+            balance: await gameClient.viewBalance(address)
         };
         response.send(balance);
 
