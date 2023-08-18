@@ -45,15 +45,13 @@ export const toError = (error: any): ErrorResponse => {
 }
 
 export type EndGameInput = {
-    address: string,
-    game_time: number,
+    gameTime: number,
 }
 
 export const isEndGameInput = (input: any): input is EndGameInput => {
     let maybeInput = (input as EndGameInput);
 
-    return maybeInput.address !== undefined &&
-        maybeInput.game_time !== undefined
+    return maybeInput.gameTime !== undefined
 }
 
 export type MintInput = {

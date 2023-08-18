@@ -150,7 +150,7 @@ const runServer = async () => {
     });
 
     // Retrieves the balance
-    app.get("/endGame", async (request: Request, response: Response) => {
+    app.post("/endGame", async (request: Request, response: Response) => {
         let auth = authenticate(request, response);
         if (!auth.success) {
             return;
