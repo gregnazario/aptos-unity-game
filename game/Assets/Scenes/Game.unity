@@ -1309,6 +1309,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   endGameUi: {fileID: 1513067013}
+  _text: {fileID: 1618707903}
+  totalTime: 0
 --- !u!1 &1618707901
 GameObject:
   m_ObjectHideFlags: 0

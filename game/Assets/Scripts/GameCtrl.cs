@@ -1,18 +1,35 @@
 using UnityEngine;
+using UnityEngine.UI;
 using UnityEngine.SceneManagement;
+using System;
 
 public class GameCtrl : MonoBehaviour
 {
   public Canvas endGameUi;
+  private BackendClient client = new BackendClient();
+  private long startTime = now();
+  [SerializeField] private Text _text;
 
-  private void OnPlayerExploded()
+  public long totalTime = 0;
+
+  private async void OnPlayerExploded()
   {
+    var currentTime = now();
+    totalTime = currentTime - startTime;
     BroadcastMessage("OnGameEnd", SendMessageOptions.DontRequireReceiver);
+    _text.text = $"Survived {totalTime} ms...\n Try again?";
     this.endGameUi.gameObject.SetActive(true);
+    await client.endGame(totalTime);
   }
 
   public void restart()
   {
     SceneManager.LoadScene("Game");
+  }
+
+  private static long now()
+  {
+    DateTimeOffset now = DateTimeOffset.UtcNow;
+    return now.ToUnixTimeMilliseconds();
   }
 }

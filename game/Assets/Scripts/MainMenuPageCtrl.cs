@@ -9,7 +9,9 @@ public class MainMenuPageCtrl : MonoBehaviour
   {
     var icDappClient = new ICDappClient();
     await icDappClient.disconnect();
+    var backend = new BackendClient();
     SceneManager.LoadScene("Login");
+    await backend.logout();
   }
 
   public void PlayNewGame()

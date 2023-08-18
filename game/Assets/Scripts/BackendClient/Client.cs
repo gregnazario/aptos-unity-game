@@ -19,16 +19,6 @@ public struct SigningInfo
   private string nonce { get; }
 }
 
-public struct AuthToken
-{
-  public AuthToken(string token)
-  {
-    this.token = token;
-  }
-
-  private string token { get; }
-}
-
 public struct TxnHash
 {
   public TxnHash(string hash)
@@ -41,58 +31,72 @@ public struct TxnHash
 
 public class BackendClient
 {
-  private const string BASE_URL = "http://localhost";
+  private const string BASE_URL = "http://localhost:8080";
 
   private HttpClient _httpClient = new HttpClient();
 
-  private static string SESSION_ID = null;
+  public static string accountAddress = null;
+  public static string staticAuthToken = null;
 
 
   public BackendClient()
   {
   }
 
-  public async Task<SigningInfo> createSession(string address, bool newSession = true)
+  public async Task<SigningInfo> createSession(string address)
   {
-    var path = "/create";
-    var query = $"?accountAddress=${address}&newSession=${newSession}";
+    var path = "create";
+    var query = $"accountAddress={address}&newSession=true";
     var body = new { };
+    accountAddress = address;
 
     var response = await post(body, path, query);
     return new SigningInfo(response.Value<string>("signingMessage"), response.Value<string>("nonce"));
   }
 
-  public async Task<AuthToken> login(string address, string message, string signature, string publicKey)
+  public async Task<string> login(string message, string signature, string publicKey)
   {
-    var path = "/login";
-    var query = "";
+    var path = "login";
+    var query = $"accountAddress={accountAddress}&message={message}&signature={signature}&publicKey={publicKey}";
     var body = new
     {
-      accountAddress = address,
+      accountAddress = accountAddress,
       message = message,
       publicKey = publicKey,
       signature = signature,
     };
 
     var response = await post(body, path, query);
-    return new AuthToken(response.Value<string>("authNonce"));
+    var authToken = response.Value<string>("authToken");
+    staticAuthToken = authToken;
+    return authToken;
   }
 
-  public async Task<TxnHash> endGame(string address, AuthToken authToken, UInt64 gameTime)
+  public async Task<TxnHash> endGame(long gameTime)
   {
-    var path = "/endGame";
-    var query = $"?accountAddress=${address}&authToken=${authToken}";
-    var body = new { gameTime = gameTime };
+    var path = "endGame";
+    var query = $"accountAddress={accountAddress}&authToken={staticAuthToken}";
+    var body = new { gameTime = gameTime, pilot = accountAddress };
 
     var response = await post(body, path, query);
 
     return new TxnHash(response.Value<string>("hash"));
   }
 
-  public async Task<TxnHash> mintBody(string address, AuthToken authToken)
+  public async Task<TxnHash> mintPilot()
   {
-    var path = "/mint/body";
-    var query = $"?accountAddress=${address}&authToken=${authToken}";
+    var path = "mint/pilot";
+    var query = $"accountAddress={accountAddress}&authToken={staticAuthToken}";
+    var body = new { };
+
+    var response = await post(body, path, query);
+
+    return new TxnHash(response.Value<string>("hash"));
+  }
+  public async Task<TxnHash> mintBody()
+  {
+    var path = "mint/body";
+    var query = $"accountAddress={accountAddress}&authToken={staticAuthToken}";
     var body = new { };
 
     var response = await post(body, path, query);
@@ -100,10 +104,10 @@ public class BackendClient
     return new TxnHash(response.Value<string>("hash"));
   }
 
-  public async Task<TxnHash> mintWing(string address, AuthToken authToken)
+  public async Task<TxnHash> mintWing()
   {
-    var path = "/mint/wing";
-    var query = $"?accountAddress=${address}&authToken=${authToken}";
+    var path = "mint/wing";
+    var query = $"accountAddress={accountAddress}&authToken={staticAuthToken}";
     var body = new { };
 
     var response = await post(body, path, query);
@@ -111,10 +115,10 @@ public class BackendClient
     return new TxnHash(response.Value<string>("hash"));
   }
 
-  public async Task<TxnHash> mintFighter(string address, AuthToken authToken)
+  public async Task<TxnHash> mintFighter()
   {
-    var path = "/mint/fighter";
-    var query = $"?accountAddress=${address}&authToken=${authToken}";
+    var path = "mint/fighter";
+    var query = $"accountAddress={accountAddress}&authToken={staticAuthToken}";
     var body = new { };
 
     var response = await post(body, path, query);
@@ -122,14 +126,14 @@ public class BackendClient
     return new TxnHash(response.Value<string>("hash"));
   }
 
-  public async Task<TxnHash> swap(string address, AuthToken authToken, string fighter, string wing = null,
+  public async Task<TxnHash> swap(string fighter, string wing = null,
     string body = null)
   {
-    var path = "/swap";
-    var query = $"?accountAddress=${address}&authToken=${authToken}";
+    var path = "swap";
+    var query = $"accountAddress={accountAddress}&authToken={staticAuthToken}";
     var input = new
     {
-      owner = address,
+      owner = accountAddress,
       fighter = fighter,
       wing = wing,
       body = body
@@ -140,18 +144,20 @@ public class BackendClient
     return new TxnHash(response.Value<string>("hash"));
   }
 
-  public async void logout(string address, AuthToken authToken)
+  public async Task<int> logout()
   {
-    var path = "/logout";
-    var query = $"?accountAddress=${address}&authToken=${authToken}";
+    var path = "logout";
+    var query = $"accountAddress={accountAddress}&authToken={staticAuthToken}";
     var body = new { };
-
     await post(body, path, query);
+    staticAuthToken = null;
+    accountAddress = null;
+    return 0;
   }
 
   private async Task<JObject> get(string path, string query)
   {
-    var response = await this._httpClient.GetAsync($"{BASE_URL}/${path}${query}");
+    var response = await this._httpClient.GetAsync($"{BASE_URL}/{path}{query}");
     var serializedResponseBody = await response.Content.ReadAsStringAsync();
     var responseBody = JsonConvert.DeserializeObject<JObject>(serializedResponseBody);
 
@@ -167,7 +173,7 @@ public class BackendClient
   {
     var serializedBody = JsonConvert.SerializeObject(body);
     var content = new StringContent(serializedBody, Encoding.UTF8, "application/json");
-    var response = await this._httpClient.PostAsync($"{BASE_URL}/${path}${query}", content);
+    var response = await this._httpClient.PostAsync($"http://localhost:8080/{path}?{query}", content);
     var serializedResponseBody = await response.Content.ReadAsStringAsync();
     var responseBody = JsonConvert.DeserializeObject<JObject>(serializedResponseBody);
 
