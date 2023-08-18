@@ -31,10 +31,6 @@ module space_fighters::records_nfts {
     const RECORDS_TOKEN_DESCRIPTION: vector<u8> = b"";
     const RECORDS_TOKEN_URI: vector<u8> = b"";
 
-    struct PilotRef has key {
-        address: Object<Pilot>,
-    }
-
     #[resource_group_member(group = aptos_framework::object::ObjectGroup)]
     struct CollectionConfig has key {
         mutator_ref: collection::MutatorRef,
@@ -63,7 +59,7 @@ module space_fighters::records_nfts {
         longest_survival_ms: u64,
     }
 
-    struct PilotDataView {
+    struct PilotDataView has drop {
         aptos_name: Option<String>,
         avatar: Option<String>,
         games_played: u64,
@@ -114,7 +110,7 @@ module space_fighters::records_nfts {
         admin: &signer,
         mint_to: address,
         records: Object<Records>,
-    ) {
+    ): Object<Pilot> {
         let constructor_ref = token::create_from_account(
             admin,
             utf8(PILOT_COLLECTION_NAME),
@@ -146,9 +142,8 @@ module space_fighters::records_nfts {
             token_v2_avatar: option::none(),
         };
         move_to(&object_signer, pilot);
-        move_to(&object_signer, PilotRef {
-            address: object::object_from_constructor_ref(&constructor_ref),
-        })
+
+        object::object_from_constructor_ref(&constructor_ref)
     }
 
     fun mint_records(
@@ -249,5 +244,70 @@ module space_fighters::records_nfts {
             games_played: records_obj.games_played,
             longest_survival_ms: records_obj.longest_survival_ms,
         }
+    }
+
+    #[test(admin = @0x123, user = @0x2)]
+    public fun test_pilot_records(
+        admin: signer,
+        user: signer,
+    ) acquires Pilot, Records {
+        use aptos_framework::account;
+
+        let admin_addr = signer::address_of(&admin);
+        let user_addr = signer::address_of(&user);
+
+        account::create_account_for_test(admin_addr);
+        account::create_account_for_test(user_addr);
+
+        init_module(&admin);
+        let records = mint_records(&admin, user_addr);
+        let pilot = mint_pilot(&admin, user_addr, records);
+        assert!(&view_pilot_records(pilot) == &PilotDataView {
+            aptos_name: option::none(),
+            avatar: option::none(),
+            games_played: 0,
+            longest_survival_ms: 0,
+        }, 1);
+
+        set_pilot_aptos_name(&admin, user_addr, pilot, option::some(utf8(b"test.apt")));
+        assert!(&view_pilot_records(pilot) == &PilotDataView {
+            aptos_name: option::some(utf8(b"test.apt")),
+            avatar: option::none(),
+            games_played: 0,
+            longest_survival_ms: 0,
+        }, 1);
+
+        let token = object::address_to_object<Token>(object::object_address(&pilot));
+        set_pilot_aptos_avatar_v2(&admin, user_addr, pilot, option::some(token));
+        assert!(&view_pilot_records(pilot) == &PilotDataView {
+            aptos_name: option::some(utf8(b"test.apt")),
+            avatar: option::some(utf8(PILOT_TOKEN_URI)),
+            games_played: 0,
+            longest_survival_ms: 0,
+        }, 1);
+
+        save_game_result(&admin, user_addr, pilot, 5000);
+        assert!(&view_pilot_records(pilot) == &PilotDataView {
+            aptos_name: option::some(utf8(b"test.apt")),
+            avatar: option::some(utf8(PILOT_TOKEN_URI)),
+            games_played: 1,
+            longest_survival_ms: 5000,
+        }, 1);
+
+        save_game_result(&admin, user_addr, pilot, 4000);
+        assert!(&view_pilot_records(pilot) == &PilotDataView {
+            aptos_name: option::some(utf8(b"test.apt")),
+            avatar: option::some(utf8(PILOT_TOKEN_URI)),
+            games_played: 2,
+            longest_survival_ms: 5000,
+        }, 1);
+
+        save_game_result(&admin, user_addr, pilot, 8000);
+        assert!(&view_pilot_records(pilot) == &PilotDataView {
+            aptos_name: option::some(utf8(b"test.apt")),
+            avatar: option::some(utf8(PILOT_TOKEN_URI)),
+            games_played: 3,
+            longest_survival_ms: 8000,
+        }, 1);
     }
 }
