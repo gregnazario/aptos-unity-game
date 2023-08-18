@@ -27,7 +27,7 @@ if (process.env.PRIVATE_KEY) {
     serverPrivateKey = undefined;
 }
 
-export const APTOS = new Provider(Network.DEVNET);
+export const APTOS = new Provider(Network.TESTNET);
 export let ACCOUNT = new AptosAccount(serverPrivateKey);
 const db = new InMemoryDatabase();
 const minter = new Minter(APTOS, ACCOUNT);
@@ -138,15 +138,8 @@ const runServer = async () => {
         }
         console.log(`/inventory ${address}`);
 
-        // TODO Retrieve inventory
-        let inventoryResponse: InventoryResponse = {
-            owner: address,
-            fighters: [],
-            wings: [],
-            bodies: [],
-        };
-        response.send(inventoryResponse);
-
+        // TODO Cleanup output
+        response.send(await gameClient.lookupAccount(address));
     });
 
     // Retrieves the balance
@@ -163,7 +156,7 @@ const runServer = async () => {
             return;
         }
 
-        let hash = await gameClient.endGame(body);
+        let hash = await gameClient.endGame(auth.address, body);
         response.send({
             hash: hash
         });
@@ -193,13 +186,10 @@ const runServer = async () => {
         }
         console.log(`/pilot ${address}`);
 
-        // TODO Retrieve pilot
-        let pilot: PilotInfo = {
-            owner: address,
-            timesPlayed: 0,
-            longestSurvival: 0
-        };
-        response.send(pilot);
+        // TODO: Cleanup with proper type?
+        let record = await gameClient.viewPilotRecords(address);
+
+        response.send(record);
 
     });
 

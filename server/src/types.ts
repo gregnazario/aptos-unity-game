@@ -45,6 +45,7 @@ export const toError = (error: any): ErrorResponse => {
 }
 
 export type EndGameInput = {
+    pilot: string,
     gameTime: number,
 }
 

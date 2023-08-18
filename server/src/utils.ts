@@ -61,13 +61,21 @@ export const serializeStr = (input: string): Uint8Array => {
 
 // TODO: This is really not good for optional addresses
 export const serializeOptionalAddress = (input: string | undefined | null): Uint8Array => {
-    let vector = [];
     // All falsy is fine, since it must be a full address
     if (!input) {
         return BCS.serializeVectorWithFunc([], "serializeFixedBytes");
     } else {
         let address = TxnBuilderTypes.AccountAddress.fromHex(input);
         return BCS.serializeVectorWithFunc([address.address], "serializeFixedBytes");
+    }
+}
+
+// TODO: This is really not good for optional addresses
+export const serializeOptionalString = (input: string | undefined | null): Uint8Array => {
+    if (input === null || input === undefined) {
+        return BCS.serializeVectorWithFunc([], "serializeStr");
+    } else {
+        return BCS.serializeVectorWithFunc([input], "serializeStr");
     }
 }
 

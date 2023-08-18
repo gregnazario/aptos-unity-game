@@ -1,17 +1,31 @@
-import {AptosAccount, BCS, Provider, TxnBuilderTypes} from "aptos";
+import {AptosAccount, Provider} from "aptos";
 import {EndGameInput, MintInput, SwapOrAddInput} from "./types";
 import {
     entryFunctionPayload,
     randomIndex,
     serializeAddress,
-    serializeOptionalAddress,
+    serializeOptionalAddress, serializeOptionalString,
     serializeStr,
     serializeU64
 } from "./utils";
 import {BODIES, FIGHTERS, WINGS} from "./assets";
 
 export const MODULE_ADDRESS = "0x72051a1da89698e7cf185d8e1e6a2c9a8835337d3d7015f97f054e2e4864d15a"
-const MODULE_NAME = "composable_nfts"
+
+const COMPOSED_NFTS = "query GetComposedNFTs($address:string!) {\n" +
+    "  current_token_ownerships_v2(\n" +
+    "    where: {owner_address: {_eq: $address}, amount: {_gt: \"0\"}}\n" +
+    "  ) {\n" +
+    "      current_token_data {\n" +
+    "      token_name\n" +
+    "    }\n" +
+    "    composed_nfts(where: {amount: {_gt: \"0\"}}) {\n" +
+    "      current_token_data {\n" +
+    "        token_name\n" +
+    "      }\n" +
+    "    }\n" +
+    "  }\n" +
+    "}"
 
 export class Minter {
     private readonly account: AptosAccount;
@@ -67,13 +81,28 @@ export class Minter {
         return await this.mint("mint_body", input);
     }
 
+    async mintPilotAndRecords(
+        address: string
+    ): Promise<string> {
+        let payload = entryFunctionPayload(
+            MODULE_ADDRESS,
+            "records_nfts",
+            "mint_pilot_and_records",
+            [
+                serializeAddress(address),
+            ]
+        );
+        let txn = await this.provider.generateSignSubmitWaitForTransaction(this.account, payload)
+        return txn.hash;
+    }
+
     async mint(
         functionName: string,
         input: MintInput
     ): Promise<string> {
         let payload = entryFunctionPayload(
             MODULE_ADDRESS,
-            MODULE_NAME,
+            "composable_nfts",
             functionName,
             [
                 serializeAddress(input.destination_address),
@@ -100,12 +129,81 @@ export class GameClient {
         this.provider = provider;
     }
 
+    async setPilotName(account: string, pilotAddress: string, name: string | undefined): Promise<string> {
+        let payload = entryFunctionPayload(
+            MODULE_ADDRESS,
+            "records_nfts",
+            "set_pilot_aptos_name",
+            [
+                serializeAddress(account),
+                serializeAddress(pilotAddress),
+                serializeOptionalString(name),
+            ]
+        );
+
+        // TODO: Use the new transaction processor
+        let txn = await this.provider.generateSignSubmitWaitForTransaction(this.account, payload)
+        return txn.hash;
+    }
+
+    async setPilotAvatar(account: string, pilotAddress: string, token: string | undefined): Promise<string> {
+        let payload = entryFunctionPayload(
+            MODULE_ADDRESS,
+            "records_nfts",
+            "set_pilot_aptos_avatar_v2",
+            [
+                serializeAddress(account),
+                serializeAddress(pilotAddress),
+                serializeOptionalAddress(token),
+            ]
+        );
+
+        // TODO: Use the new transaction processor
+        let txn = await this.provider.generateSignSubmitWaitForTransaction(this.account, payload)
+        return txn.hash;
+    }
+
+    async lookupAccount(account: string): Promise<any> {
+        return this.provider.queryIndexer({
+            query: COMPOSED_NFTS,
+            variables: {
+                address: account
+            }
+        });
+    }
+
+    async viewPilotRecords(account: string) {
+        let ret = await this.provider.view({
+            function: `${MODULE_ADDRESS}::records_nfts::view_pilot_records`,
+            type_arguments: [],
+            arguments: [account],
+        })
+
+        let value = (ret[0] as {
+            aptos_name: string | undefined,
+            avatar: string | undefined,
+            games_played: bigint,
+            longest_survival_ms: bigint,
+        });
+        let aptosName: string | undefined = value["aptos_name"];
+        let avatar: string | undefined = value["avatar"];
+        let gamesPlayed: bigint = value["games_played"];
+        let longestSurvival: bigint = value["longest_survival_ms"];
+
+        return {
+            aptosName: aptosName,
+            avatar: avatar,
+            gamesPlayed: gamesPlayed,
+            longestSurvival: longestSurvival,
+        }
+    }
+
     async swapOrAddParts(
         input: SwapOrAddInput
     ): Promise<string> {
         let payload = entryFunctionPayload(
             MODULE_ADDRESS,
-            MODULE_NAME,
+            "composable_nfts",
             "swap_or_add_parts",
             [
                 serializeAddress(input.owner),
@@ -120,24 +218,20 @@ export class GameClient {
         return txn.hash;
     }
 
-    async endGame(endGameInput: EndGameInput): Promise<string> {
-        // TODO: Implement for ending a game
-        /*let payload = entryFunctionPayload(
+    async endGame(address: string, endGameInput: EndGameInput): Promise<string> {
+        let payload = entryFunctionPayload(
             MODULE_ADDRESS,
-            MODULE_NAME,
-            "swap_or_add_parts",
+            "records_nfts",
+            "save_game_result",
             [
-                serializeAddress(input.owner),
-                serializeAddress(input.fighter),
-                serializeOptionalAddress(input.wing),
-                serializeOptionalAddress(input.body),
+                serializeAddress(address),
+                serializeOptionalAddress(endGameInput.pilot),
+                serializeU64(endGameInput.gameTime),
             ]
         );
 
         // TODO: Use the new transaction processor
         let txn = await this.provider.generateSignSubmitWaitForTransaction(this.account, payload)
         return txn.hash;
-         */
-        return "";
     }
 }
