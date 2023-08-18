@@ -93,7 +93,7 @@ const runServer = async () => {
         console.log(`/login ${JSON.stringify(body)}`);
 
         try {
-            let nonce = db.login(body);
+            let nonce = await db.login(body);
 
             // If we verify the signature, say the login is successful
             response.status(200).send({

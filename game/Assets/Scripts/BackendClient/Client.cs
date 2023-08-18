@@ -140,8 +140,6 @@ public class BackendClient
     return new TxnHash(response.Value<string>("hash"));
   }
 
-  public async Task<UInt64>
-
   public async void logout(string address, AuthToken authToken)
   {
     var path = "/logout";
