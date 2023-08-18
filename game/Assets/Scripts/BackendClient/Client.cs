@@ -37,6 +37,8 @@ public class BackendClient
 
   public static string accountAddress = null;
   public static string staticAuthToken = null;
+  public static string RECORDS_ADDRESS = "0xcf64ac35cde36dd01e41d2f5a894c8a6708bcde336be645a55006eb93042f53e";
+  public static string PILOT_ADDRESS = "0x18d3ef9c784efad3824667dcd75524b4ae8e3aafc914a7e87fcc7a18c091cdb5";
 
 
   public BackendClient()
@@ -72,11 +74,11 @@ public class BackendClient
     return authToken;
   }
 
-  public async Task<TxnHash> endGame(long gameTime)
+  public async Task<TxnHash> endGame(long gameTime, string pilotAddress)
   {
     var path = "endGame";
     var query = $"accountAddress={accountAddress}&authToken={staticAuthToken}";
-    var body = new { gameTime = gameTime, pilot = accountAddress };
+    var body = new { gameTime = gameTime, pilot = pilotAddress };
 
     var response = await post(body, path, query);
 
@@ -93,6 +95,7 @@ public class BackendClient
 
     return new TxnHash(response.Value<string>("hash"));
   }
+
   public async Task<TxnHash> mintBody()
   {
     var path = "mint/body";
@@ -155,9 +158,17 @@ public class BackendClient
     return 0;
   }
 
+  public async Task<(long, long)> pilot()
+  {
+    var path = "pilot";
+    var query = $"accountAddress={PILOT_ADDRESS}";
+    var response = await get(path, query);
+    return (response.Value<long>("gamesPlayed"), response.Value<long>("longestSurvival"));
+  }
+
   private async Task<JObject> get(string path, string query)
   {
-    var response = await this._httpClient.GetAsync($"{BASE_URL}/{path}{query}");
+    var response = await this._httpClient.GetAsync($"http://localhost:8080/{path}?{query}");
     var serializedResponseBody = await response.Content.ReadAsStringAsync();
     var responseBody = JsonConvert.DeserializeObject<JObject>(serializedResponseBody);
 

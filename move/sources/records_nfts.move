@@ -246,6 +246,27 @@ module space_fighters::records_nfts {
         }
     }
 
+    #[view]
+    public fun view_pilot_records_v2(
+        pilot: address,
+    ): PilotDataView acquires Pilot, Records {
+        let pilot_obj = borrow_global<Pilot>(pilot);
+        let token_v2_avatar = &pilot_obj.token_v2_avatar;
+        let avatar = if (option::is_some(token_v2_avatar)) {
+            option::some(token::uri(*option::borrow(token_v2_avatar)))
+        } else {
+            option::none()
+        };
+
+        let records_obj = borrow_global_mut<Records>(object::object_address(&pilot_obj.records));
+        PilotDataView {
+            aptos_name: pilot_obj.aptos_name,
+            avatar,
+            games_played: records_obj.games_played,
+            longest_survival_ms: records_obj.longest_survival_ms,
+        }
+    }
+
     #[test(admin = @0x123, user = @0x2)]
     public fun test_pilot_records(
         admin: signer,

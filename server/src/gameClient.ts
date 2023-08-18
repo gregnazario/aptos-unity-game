@@ -10,7 +10,7 @@ import {
 } from "./utils";
 import {BODIES, FIGHTERS, WINGS} from "./assets";
 
-export const MODULE_ADDRESS = "0xdf10f16a9cf593a08b473ff535d0d2814b0757275150692010e30eb7c467259e"
+export const MODULE_ADDRESS = "0xcbe965f307860ed268ec1820534d2395c8fc0941059128398567228de5cecef6"
 
 const COMPOSED_NFTS = "query GetComposedNFTs($address:string!) {\n" +
     "  current_token_ownerships_v2(\n" +
@@ -174,7 +174,7 @@ export class GameClient {
 
     async viewPilotRecords(account: string) {
         let ret = await this.provider.view({
-            function: `${MODULE_ADDRESS}::records_nfts::view_pilot_records`,
+            function: `${MODULE_ADDRESS}::records_nfts::view_pilot_records_v2`,
             type_arguments: [],
             arguments: [account],
         })

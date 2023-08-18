@@ -19,12 +19,17 @@ public class GameCtrl : MonoBehaviour
     BroadcastMessage("OnGameEnd", SendMessageOptions.DontRequireReceiver);
     _text.text = $"Survived {totalTime} ms...\n Try again?";
     this.endGameUi.gameObject.SetActive(true);
-    await client.endGame(totalTime);
+    await client.endGame(totalTime, BackendClient.PILOT_ADDRESS);
   }
 
   public void restart()
   {
     SceneManager.LoadScene("Game");
+  }
+
+  public void mainMenu()
+  {
+    SceneManager.LoadScene("MainMenu");
   }
 
   private static long now()

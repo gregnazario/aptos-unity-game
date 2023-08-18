@@ -20,7 +20,7 @@ public class LoginPageCtrl : MonoBehaviour
   {
     //await _icDappClient.connect();
     // TODO load address from somewhere
-    var address = "0x72051a1da89698e7cf185d8e1e6a2c9a8835337d3d7015f97f054e2e4864d15a";
+    var address = "0xcbe965f307860ed268ec1820534d2395c8fc0941059128398567228de5cecef6";
     var session = await backendClient.createSession(address);
     await backendClient.login( "a", "a", "a");
     SceneManager.LoadScene("MainMenu");

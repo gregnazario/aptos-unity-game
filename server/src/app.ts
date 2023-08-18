@@ -167,6 +167,7 @@ const runServer = async () => {
         }
 
         let hash = await gameClient.endGame(auth.address, body);
+        console.log(`Submitted ${hash}`);
         response.send({
             hash: hash
         });
@@ -197,9 +198,14 @@ const runServer = async () => {
         console.log(`/pilot ${address}`);
 
         // TODO: Cleanup with proper type?
-        let record = await gameClient.viewPilotRecords(address);
+        try {
+            let record = await gameClient.viewPilotRecords(address);
 
-        response.send(record);
+            response.send(record);
+        } catch (e: any) {
+
+            response.status(400).send(toError(e));
+        }
 
     });
 
@@ -212,6 +218,7 @@ const runServer = async () => {
         console.log(`/mint/pilot ${auth.address}`)
 
         let hash = await minter.mintPilotAndRecords(auth.address);
+        console.log(`Submitted ${hash}`);
         response.send({
             hash: hash
         });
@@ -226,6 +233,7 @@ const runServer = async () => {
         console.log(`/mint/fighter ${auth.address}`)
 
         let hash = await minter.mintFighter(auth.address);
+        console.log(`Submitted ${hash}`);
         response.send({
             hash: hash
         });
@@ -240,6 +248,7 @@ const runServer = async () => {
         console.log(`/mint/wing ${auth.address}`);
 
         let hash = await minter.mintWing(auth.address);
+        console.log(`Submitted ${hash}`);
         response.send({
             hash: hash
         });
@@ -254,6 +263,7 @@ const runServer = async () => {
         console.log(`/mint/body ${auth.address}`);
 
         let hash = await minter.mintBody(auth.address);
+        console.log(`Submitted ${hash}`);
         response.send({
             hash: hash
         });
@@ -275,6 +285,7 @@ const runServer = async () => {
         }
 
         let hash = await gameClient.swapOrAddParts(body);
+        console.log(`Submitted ${hash}`);
         response.send({
             hash: hash
         });
