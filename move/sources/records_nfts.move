@@ -17,11 +17,11 @@ module space_fighters::records_nfts {
 
     const PILOT_COLLECTION_NAME: vector<u8> = b"Aptos Space Fighters Pilots";
     const PILOT_COLLECTION_DESCRIPTION: vector<u8> = b"This collection is not tradable! It represents your identity in game and tracks your progress.";
-    const PILOT_COLLECTION_URI: vector<u8> = b"https://storage.googleapis.com/space-fighters-assets/collection_pilot.jpg";
+    const PILOT_COLLECTION_URI: vector<u8> = b"https://storage.googleapis.com/space-fighters-assets/nft_pilot.jpg";
     
     const PILOT_TOKEN_NAME: vector<u8> = b"Pilot";
     const PILOT_TOKEN_DESCRIPTION: vector<u8> = b"This is your fighter";
-    const PILOT_TOKEN_URI: vector<u8> = b"https://storage.googleapis.com/space-fighters-assets/nft_pilot.jpg";
+    const PILOT_TOKEN_URI: vector<u8> = b"https://storage.googleapis.com/space-fighters-assets/collection_pilot.jpg";
 
     const RECORDS_COLLECTION_NAME: vector<u8> = b"Aptos Space Fighter Records";
     const RECORDS_COLLECTION_DESCRIPTION: vector<u8> = b"This collection is not tradable! It provides records of progress in game.";
