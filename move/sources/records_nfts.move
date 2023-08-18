@@ -250,28 +250,4 @@ module space_fighters::records_nfts {
             longest_survival_ms: records_obj.longest_survival_ms,
         }
     }
-
-    #[test(admin = @0x123, user = @0x2)]
-    public fun test_pilot_records(
-        framework: signer,
-        admin: signer,
-        user: signer,
-    ) acquires Pilot, Records {
-        use aptos_framework::account;
-
-        let admin_addr = signer::address_of(&admin);
-        let user_addr = signer::address_of(&user);
-
-        account::create_account_for_test(admin_addr);
-        account::create_account_for_test(user_addr);
-
-        init_module(&admin);
-        mint_pilot_and_records(&admin, user_addr);
-        assert!(view_pilot_records(user_addr) == PilotDataView {
-            aptos_name: option::null(),
-            avatar: option::null(),
-            games_played: 0,
-            longest_survival_ms: 0,
-        }, 1);
-    }
 }

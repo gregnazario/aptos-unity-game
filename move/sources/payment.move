@@ -81,4 +81,36 @@ module space_fighters::payments {
             coin::value(user_coins)
         }
     }
+
+    #[test(framework = @0x1, admin = @0x123, user = @0x2)]
+    public fun test_deposit_withdraw_flow(
+        framework: signer,
+        admin: signer,
+        user: signer,
+    ) acquires PaymentConfig {
+        use aptos_framework::account;
+        use aptos_framework::aptos_coin::{Self, AptosCoin};
+
+        let admin_addr = signer::address_of(&admin);
+        let user_addr = signer::address_of(&user);
+
+        account::create_account_for_test(admin_addr);
+        account::create_account_for_test(user_addr);
+        let (burn_cap, mint_cap) = aptos_coin::initialize_for_test(&framework);
+        coin::register<AptosCoin>(&admin);
+        coin::register<AptosCoin>(&user);
+        coin::deposit(user_addr, coin::mint(100, &mint_cap));
+        coin::destroy_burn_cap(burn_cap);
+        coin::destroy_mint_cap(mint_cap);
+
+        init_module(&admin);
+        deposit(&user, 10);
+        assert!(view_user_balance(user_addr) == 10, 1);
+        withdraw(&user, 5);
+        assert!(view_user_balance(user_addr) == 5, 2);
+        admin_withdraw(&admin, user_addr, 5);
+        assert!(view_user_balance(user_addr) == 0, 3);
+        assert!(coin::balance<AptosCoin>(user_addr) == 95, 4);
+        assert!(coin::balance<AptosCoin>(admin_addr) == 5, 5);
+    }
 }
