@@ -1,4 +1,4 @@
-import {AptosAccount, Provider} from "aptos";
+import {AptosAccount, Provider, TxnBuilderTypes} from "aptos";
 import {EndGameInput, MintInput, SwapOrAddInput} from "./types";
 import {
     entryFunctionPayload,
@@ -10,9 +10,9 @@ import {
 } from "./utils";
 import {BODIES, FIGHTERS, WINGS} from "./assets";
 
-export const MODULE_ADDRESS = "0xcbe965f307860ed268ec1820534d2395c8fc0941059128398567228de5cecef6"
+export const MODULE_ADDRESS = "0x4d3b5faa633a42ad680d35b730b65100b719d57bede1bce1eeefb9c9882edfd2"
 
-const COMPOSED_NFTS = "query GetComposedNFTs($address:string!) {\n" +
+const COMPOSED_NFTS = "query GetComposedNFTs($address:String) {\n" +
     "  current_token_ownerships_v2(\n" +
     "    where: {owner_address: {_eq: $address}, amount: {_gt: \"0\"}}\n" +
     "  ) {\n" +
@@ -26,6 +26,22 @@ const COMPOSED_NFTS = "query GetComposedNFTs($address:string!) {\n" +
     "    }\n" +
     "  }\n" +
     "}"
+
+const NFTS = "query OwnedNFTs($creator: String!, $owner: String!) {\n" +
+    "  current_token_ownerships_v2(\n" +
+    "    where: {current_token_data: {current_collection: {creator_address: {_eq: $creator}}}, owner_address: {_eq: $owner}}\n" +
+    "  ) {\n" +
+    "    current_token_data {\n" +
+    "      token_name\n" +
+    "      token_data_id\n" +
+    "      current_collection {\n" +
+    "        collection_name\n" +
+    "      }\n" +
+    "      token_uri\n" +
+    "      description\n" +
+    "    }\n" +
+    "  }\n" +
+    "}\n"
 
 export class Minter {
     private readonly account: AptosAccount;
@@ -163,13 +179,29 @@ export class GameClient {
         return txn.hash;
     }
 
-    async lookupAccount(account: string): Promise<any> {
-        return this.provider.queryIndexer({
-            query: COMPOSED_NFTS,
-            variables: {
-                address: account
-            }
+    async lookupAccount(account: string) {
+        let address = TxnBuilderTypes.AccountAddress.fromHex(account);
+        console.log("Address: ", address.toHexString());
+        let response = await this.provider.queryIndexer<any>({
+            query: NFTS,
+            variables: {creator: MODULE_ADDRESS, owner: address.toHexString()}
         });
+
+        // Flatten response
+        let pilot: string = "";
+        let records: string = "";
+        let nfts = response.current_token_ownerships_v2;
+
+        for (const nft of nfts) {
+            if (nft.current_token_data.token_name == "Pilot") {
+                pilot = nft.current_token_data.token_data_id
+            }
+            if (nft.current_token_data.token_name == "Records") {
+                records = nft.current_token_data.token_data_id
+            }
+        }
+
+        return  {pilot: pilot, records: records};
     }
 
     async viewPilotRecords(account: string) {
@@ -185,8 +217,8 @@ export class GameClient {
             games_played: bigint,
             longest_survival_ms: bigint,
         });
-        let aptosName: string | undefined = value["aptos_name"];
-        let avatar: string | undefined = value["avatar"];
+        let aptosName: string = value["aptos_name"] ?? "Unknown";
+        let avatar: string | undefined = value["avatar"] ?? "";
         let gamesPlayed: bigint = value["games_played"];
         let longestSurvival: bigint = value["longest_survival_ms"];
 

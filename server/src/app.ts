@@ -27,7 +27,7 @@ if (process.env.PRIVATE_KEY) {
     serverPrivateKey = undefined;
 }
 
-export const APTOS = new Provider(Network.TESTNET);
+export const APTOS = new Provider(Network.DEVNET);
 export let ACCOUNT = new AptosAccount(serverPrivateKey);
 const db = new InMemoryDatabase();
 const minter = new Minter(APTOS, ACCOUNT);
@@ -149,7 +149,9 @@ const runServer = async () => {
         console.log(`/inventory ${address}`);
 
         // TODO Cleanup output
-        response.send(await gameClient.lookupAccount(address));
+        let inventory = await gameClient.lookupAccount(address);
+        console.log(`INVENTORY: ${JSON.stringify(inventory)}`)
+        response.send(inventory);
     });
 
     // Retrieves the balance
@@ -182,10 +184,14 @@ const runServer = async () => {
         console.log(`/balance ${address}`);
 
         // TODO Retrieve balance
-        let balance: Balance = {
-            balance: await gameClient.viewBalance(address)
-        };
-        response.send(balance);
+        try {
+            let balance: Balance = {
+                balance: await gameClient.viewBalance(address)
+            };
+            response.send(balance);
+        } catch (e: any) {
+            response.status(400).send(toError(e));
+        }
 
     });
 
