@@ -19,7 +19,15 @@ public class GameCtrl : MonoBehaviour
     BroadcastMessage("OnGameEnd", SendMessageOptions.DontRequireReceiver);
     _text.text = $"Survived {totalTime} ms...\n Try again?";
     this.endGameUi.gameObject.SetActive(true);
-    await client.endGame(totalTime, BackendClient.PILOT_ADDRESS);
+
+    var maybePilot = GameState.Get<Pilot>("pilot");
+    if (maybePilot is null)
+    {
+      throw new Exception("No pilot set");
+    }
+
+    var pilot = (Pilot)maybePilot;
+    await client.endGame(totalTime, pilot.pilotAddress);
   }
 
   public void restart()

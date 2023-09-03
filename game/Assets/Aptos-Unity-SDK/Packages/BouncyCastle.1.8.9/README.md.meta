@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: c5fbbd7375d447c4ab99eb6aca7ca61a
+TextScriptImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 244713
+  packageName: Aptos Web3 SDK
+  packageVersion: 1.0.4
+  assetPath: Assets/Aptos-Unity-SDK/Packages/BouncyCastle.1.8.9/README.md
+  uploadId: 563979

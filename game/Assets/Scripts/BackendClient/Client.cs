@@ -5,6 +5,7 @@ using System.Net.Http;
 using Newtonsoft.Json;
 using System.Net;
 using Newtonsoft.Json.Linq;
+using Org.BouncyCastle.Utilities.Net;
 using UnityEngine;
 
 public struct SigningInfo
@@ -15,8 +16,8 @@ public struct SigningInfo
     this.nonce = nonce;
   }
 
-  private string signingMessage { get; }
-  private string nonce { get; }
+  public string signingMessage { get; }
+  public string nonce { get; }
 }
 
 public struct TxnHash
@@ -29,6 +30,18 @@ public struct TxnHash
   private string hash { get; }
 }
 
+[Serializable]
+public struct Pilot
+{
+  public string pilotAddress;
+}
+
+public struct AuthData
+{
+  public string accountAddress;
+  public string authToken;
+}
+
 public class BackendClient
 {
   private const string BASE_URL = "http://localhost:8080";
@@ -37,12 +50,45 @@ public class BackendClient
 
   public static string accountAddress = null;
   public static string staticAuthToken = null;
-  public static string RECORDS_ADDRESS = "0xcf64ac35cde36dd01e41d2f5a894c8a6708bcde336be645a55006eb93042f53e";
-  public static string PILOT_ADDRESS = "0x18d3ef9c784efad3824667dcd75524b4ae8e3aafc914a7e87fcc7a18c091cdb5";
-
 
   public BackendClient()
   {
+  }
+
+  public async Task<string> faucet(string address)
+  {
+    var serializedBody = JsonConvert.SerializeObject(new { });
+    var content = new StringContent(serializedBody, Encoding.UTF8, "application/json");
+    var response = await this._httpClient.PostAsync($"https://faucet.devnet.aptoslabs.com/mint?amount=100000000&address={address}", content);
+    await response.Content.ReadAsStringAsync();
+
+    if (response.StatusCode != HttpStatusCode.OK)
+    {
+      throw new HttpRequestException("Failed to use faucet");
+    }
+
+    return "";
+  }
+
+  private AuthData getAuthData()
+  {
+    var authData = GameState.Get<AuthData>("authData");
+    if (authData is null)
+    {
+      throw new Exception("No auth data to load!");
+    }
+
+    return (AuthData)authData;
+  }
+
+  private void setAuthData(string address, string authToken)
+  {
+    var authData = new AuthData
+    {
+      accountAddress = address,
+      authToken = authToken,
+    };
+    GameState.Set<AuthData>("authData", authData);
   }
 
   public async Task<SigningInfo> createSession(string address)
@@ -50,7 +96,7 @@ public class BackendClient
     var path = "create";
     var query = $"accountAddress={address}&newSession=true";
     var body = new { };
-    accountAddress = address;
+    setAuthData(address, null);
 
     var response = await post(body, path, query);
     return new SigningInfo(response.Value<string>("signingMessage"), response.Value<string>("nonce"));
@@ -58,11 +104,13 @@ public class BackendClient
 
   public async Task<string> login(string message, string signature, string publicKey)
   {
+    var authData = getAuthData();
     var path = "login";
-    var query = $"accountAddress={accountAddress}&message={message}&signature={signature}&publicKey={publicKey}";
+    var query =
+      $"accountAddress={authData.accountAddress}&message={message}&signature={signature}&publicKey={publicKey}";
     var body = new
     {
-      accountAddress = accountAddress,
+      accountAddress = authData.accountAddress,
       message = message,
       publicKey = publicKey,
       signature = signature,
@@ -70,25 +118,38 @@ public class BackendClient
 
     var response = await post(body, path, query);
     var authToken = response.Value<string>("authToken");
-    staticAuthToken = authToken;
+    setAuthData(authData.accountAddress, authToken);
     return authToken;
   }
 
   public async Task<TxnHash> endGame(long gameTime, string pilotAddress)
   {
+    var authData = getAuthData();
     var path = "endGame";
-    var query = $"accountAddress={accountAddress}&authToken={staticAuthToken}";
-    var body = new { gameTime = gameTime, pilot = pilotAddress };
+    var query = $"accountAddress={authData.accountAddress}&authToken={authData.authToken}";
+    var body = new { gameTime, pilot = pilotAddress };
 
     var response = await post(body, path, query);
 
     return new TxnHash(response.Value<string>("hash"));
   }
 
+  public async Task<(string, string)> inventory()
+  {
+    var authData = getAuthData();
+    var path = "inventory";
+    var query = $"accountAddress={authData.accountAddress}";
+
+    var response = await get(path, query);
+
+    return (response.Value<string>("pilot"), response.Value<string>("records"));
+  }
+
   public async Task<TxnHash> mintPilot()
   {
+    var authData = getAuthData();
     var path = "mint/pilot";
-    var query = $"accountAddress={accountAddress}&authToken={staticAuthToken}";
+    var query = $"accountAddress={authData.accountAddress}&authToken={authData.authToken}";
     var body = new { };
 
     var response = await post(body, path, query);
@@ -98,8 +159,9 @@ public class BackendClient
 
   public async Task<TxnHash> mintBody()
   {
+    var authData = getAuthData();
     var path = "mint/body";
-    var query = $"accountAddress={accountAddress}&authToken={staticAuthToken}";
+    var query = $"accountAddress={authData.accountAddress}&authToken={authData.authToken}";
     var body = new { };
 
     var response = await post(body, path, query);
@@ -109,8 +171,9 @@ public class BackendClient
 
   public async Task<TxnHash> mintWing()
   {
+    var authData = getAuthData();
     var path = "mint/wing";
-    var query = $"accountAddress={accountAddress}&authToken={staticAuthToken}";
+    var query = $"accountAddress={authData.accountAddress}&authToken={authData.authToken}";
     var body = new { };
 
     var response = await post(body, path, query);
@@ -120,8 +183,9 @@ public class BackendClient
 
   public async Task<TxnHash> mintFighter()
   {
+    var authData = getAuthData();
     var path = "mint/fighter";
-    var query = $"accountAddress={accountAddress}&authToken={staticAuthToken}";
+    var query = $"accountAddress={authData.accountAddress}&authToken={authData.authToken}";
     var body = new { };
 
     var response = await post(body, path, query);
@@ -132,8 +196,9 @@ public class BackendClient
   public async Task<TxnHash> swap(string fighter, string wing = null,
     string body = null)
   {
+    var authData = getAuthData();
     var path = "swap";
-    var query = $"accountAddress={accountAddress}&authToken={staticAuthToken}";
+    var query = $"accountAddress={authData.accountAddress}&authToken={authData.authToken}";
     var input = new
     {
       owner = accountAddress,
@@ -149,8 +214,9 @@ public class BackendClient
 
   public async Task<int> logout()
   {
+    var authData = getAuthData();
     var path = "logout";
-    var query = $"accountAddress={accountAddress}&authToken={staticAuthToken}";
+    var query = $"accountAddress={authData.accountAddress}&authToken={authData.authToken}";
     var body = new { };
     await post(body, path, query);
     staticAuthToken = null;
@@ -158,18 +224,19 @@ public class BackendClient
     return 0;
   }
 
-  public async Task<(long, long)> pilot()
+  public async Task<(long, long)> pilot(string address)
   {
     var path = "pilot";
-    var query = $"accountAddress={PILOT_ADDRESS}";
+    var query = $"accountAddress={address}";
     var response = await get(path, query);
     return (response.Value<long>("gamesPlayed"), response.Value<long>("longestSurvival"));
   }
 
   public async Task<long> balance()
   {
+    var authData = getAuthData();
     var path = "balance";
-    var query = $"accountAddress={accountAddress}";
+    var query = $"accountAddress={authData.accountAddress}";
     var response = await get(path, query);
     return response.Value<long>("balance");
   }
